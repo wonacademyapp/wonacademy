@@ -27,20 +27,34 @@
     addCss();
     const d = document.createElement("div"); d.id = "wa-login";
     d.innerHTML = `<form class="box"><h1>${(CFG.SCHOOL_NAME || "Won Academy")}</h1>
-      <p>Sign in with your email. We'll send you a link — open it on this device and you're in.</p>
+      <p>Sign in with your email. We'll email you a sign-in code (and a link).</p>
       <input type="email" required placeholder="you@example.com" autocomplete="email" aria-label="Email">
-      <button type="submit">Send me a sign-in link</button><div class="msg" role="status">${message || ""}</div></form>`;
+      <button type="submit">Send me a sign-in code</button><div class="msg" role="status">${message || ""}</div>
+      <div class="code" hidden><p style="margin-top:16px">Type the code from the email here:</p>
+      <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" aria-label="Sign-in code" maxlength="10">
+      <button type="button" class="vbtn">Sign in</button><div class="msg vmsg" role="status"></div></div></form>`;
     const go = () => document.body.appendChild(d);
     if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
-    const f = d.querySelector("form"), msg = d.querySelector(".msg"), btn = d.querySelector("button");
+    const f = d.querySelector("form"), msg = d.querySelector(".msg"), btn = d.querySelector("button[type=submit]");
+    const codeBox = d.querySelector(".code"), codeIn = codeBox.querySelector("input"), vbtn = d.querySelector(".vbtn"), vmsg = d.querySelector(".vmsg");
+    let sentTo = "";
     f.onsubmit = async (e) => {
-      e.preventDefault(); const email = f.querySelector("input").value.trim().toLowerCase(); if (!email) return;
+      e.preventDefault(); const email = f.querySelector("input[type=email]").value.trim().toLowerCase(); if (!email) return;
       btn.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
       btn.disabled = false;
-      if (error) { msg.className = "msg err"; msg.textContent = "Couldn't send the link: " + error.message; }
-      else { msg.className = "msg ok"; msg.textContent = "✓ Check your inbox (and spam) for the sign-in link from " + (CFG.SCHOOL_NAME || "Won Academy") + "."; }
+      if (error) { msg.className = "msg err"; msg.textContent = "Couldn't send the email: " + error.message; }
+      else { sentTo = email; msg.className = "msg ok"; msg.textContent = "✓ Email sent from " + (CFG.SCHOOL_NAME || "Won Academy") + " (check spam too)."; codeBox.hidden = false; btn.textContent = "Send a new code"; codeIn.focus(); }
     };
+    const verify = async () => {
+      const token = codeIn.value.replace(/\D/g, ""); if (!sentTo || token.length < 6) { vmsg.className = "msg vmsg err"; vmsg.textContent = "Please type the whole code."; return; }
+      vbtn.disabled = true; vmsg.className = "msg vmsg"; vmsg.textContent = "Checking…";
+      const { error } = await sb.auth.verifyOtp({ email: sentTo, token, type: "email" });
+      vbtn.disabled = false;
+      if (error) { vmsg.className = "msg vmsg err"; vmsg.textContent = "That code didn't work. Check it, or send a new code. (" + error.message + ")"; }
+    };
+    vbtn.onclick = verify;
+    codeIn.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); verify(); } });
   }
   function showWho(email) {
     const go = () => { addCss(); const w = document.createElement("div"); w.id = "wa-who"; w.innerHTML = `${email}<button type="button">Sign out</button>`;

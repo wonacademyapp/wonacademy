@@ -182,6 +182,33 @@
     },
   };
 
+  /* ---------------- push notifications + icon number ---------------- */
+  const VAPID_PUBLIC = "BOwEUrNDXBdf6WdP-Ft3TFbkGXYOxwKNCOJqhnAFr8Wopikw0WcrB8r3nj7vaedVkTKd8U8CvbrdbYzZyIjTSPs";
+  let swReg = null;
+  if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").then((r) => { swReg = r; }).catch(() => {}); }
+  const b64ToBytes = (b) => { const p = "=".repeat((4 - (b.length % 4)) % 4); const raw = atob((b + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from([...raw].map((c) => c.charCodeAt(0))); };
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const isStandalone = () => (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  window.WA_PUSH = {
+    /* "ok" | "needs-home-screen" | "unsupported" */
+    support() { if (isIOS && !isStandalone()) return "needs-home-screen"; return ("serviceWorker" in navigator && "PushManager" in window && "Notification" in window) ? "ok" : "unsupported"; },
+    permission() { return "Notification" in window ? Notification.permission : "denied"; },
+    async isOn() { try { const r = swReg || (await navigator.serviceWorker.ready); const s = await r.pushManager.getSubscription(); return !!s && Notification.permission === "granted"; } catch (e) { return false; } },
+    async enable(teacherId) {
+      const perm = await Notification.requestPermission(); if (perm !== "granted") return false;
+      const r = swReg || (await navigator.serviceWorker.ready);
+      let s = await r.pushManager.getSubscription();
+      if (!s) s = await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+      const j = s.toJSON(); const id = "p" + Array.from(new TextEncoder().encode(j.endpoint)).reduce((h, c) => ((h * 31 + c) >>> 0), 7).toString(36) + j.endpoint.length;
+      await db.collection("pushsubs").doc(id).set({ teacherId: teacherId || "", email: (meCache && meCache.email) || "", sub: j, ua: navigator.userAgent.slice(0, 120), at: new Date().toISOString() });
+      return true;
+    },
+    badge(n) {
+      try { if ("setAppBadge" in navigator) { if (n) navigator.setAppBadge(n); else navigator.clearAppBadge(); } } catch (e) {}
+      try { navigator.serviceWorker && navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage({ badge: n | 0 }); } catch (e) {}
+    },
+  };
+
   /* ---------------- the window.claude shim the app expects ---------------- */
   const ns = { db, user, assets, downloads };
   window.claude = { use: async (name) => { if (!(name in ns)) return null; await sessionReady; if (name === "user") await me(); return ns[name]; } };

@@ -1134,6 +1134,9 @@ details.sh-t[open] summary{margin-bottom:6px}
 .mv-tabs button{border:0;background:none;padding:8px 12px;font:600 14px/1.2 inherit;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px}
 .mv-tabs button.on{color:var(--ink,#16181d);border-bottom-color:var(--accent,#2f5bd3)}
 .linkish{border:0;background:none;padding:0;color:var(--accent,#2f5bd3);font:inherit;cursor:pointer;text-decoration:underline}
+.tv-push{border:1px solid var(--accent,#2f5bd3);background:var(--surface);border-radius:12px;padding:12px 14px;margin:0 0 14px}
+.tv-push p{margin:4px 0 10px;font-size:14px}
+.tv-push-b{display:flex;gap:8px}
 </style>
 
 <div class="app">
@@ -2309,7 +2312,10 @@ function vTeacherView(){
       const what=!f?`<b>New lesson:</b> ${esc(now)}`:!me?`<s>${esc(was)}</s><div><b>Moved to ${esc(nm("teachers",l.subTeacherId||l.teacherId))}</b> · you don't teach this lesson any more.</div>`:`<s>${esc(was)}</s><div><b>Now:</b> ${esc(now)}${f.teacherId&&f.teacherId!==t.id?" · now your lesson":""}</div>`;
       return `<div class="tv-off"><div><div><b>${esc(nm("students",l.studentId))}</b></div>${what}</div><button type="button" class="tv-btn done" data-pcok="${esc(l.id)}">Seen</button></div>`}).join("")}<p class="muted" style="margin:8px 0 0;font-size:13px">If you can't make it at the new time, please let the office know as soon as you can. Thank you for your understanding!</p></section>`:"";
     const repCards=wk&&newRep.length?`<section class="tv-replies"><h2>New replies to your notes</h2>${newRep.map(([c,d,txt,who])=>`<article class="tv-note"><div class="tv-nh"><b>Your note</b><span>${esc(who)}</span><span class="tv-nacts"><button type="button" class="tv-nbtn" data-rseen="${c}|${esc(d.id)}">OK, seen</button></span></div><div class="tv-nt">${esc(txt)}</div>${noteSocial(c,d)}</article>`).join("")}</section>`:"";
-    body=`${pcCard}${onCard}${offCard}${repCards}${wk?offerCardsFor(t.id):""}<div class="tv-weeknav">${weekNav()}</div>${wk?ov:""}
+    {const oo=arr("offers").filter(o=>Array.isArray(o.teachers)&&o.teachers.includes(t.id)&&o.status==="open"&&o.date>=td&&!(o.declined||{})[t.id]).length;
+      const nB=pcL.length+offNew.length+newRep.length+onL.length+oo;if(lock&&window.WA_PUSH)window.WA_PUSH.badge(nB);}
+    const pushCard=wk&&lock&&window.WA_PUSH?pushCardHtml():"";
+    body=`${pushCard}${pcCard}${onCard}${offCard}${repCards}${wk?offerCardsFor(t.id):""}<div class="tv-weeknav">${weekNav()}</div>${wk?ov:""}
     ${(()=>{const c=closerOf(td);return !wk&&c&&c.tid===t.id&&!closingDone(c)&&!(td>=dates[0]&&td<=dates[6])?closingCard(td,t.id):""})()}
     ${wk?`<h2 class="tv-conf-h">To confirm ${conf.length?`<span class="chip warn">${conf.length}</span>`:""}</h2>`:(todo?`<div class="tv-todo">${todo} past lesson${todo===1?"":"s"} still say Scheduled. Please mark what happened.</div>`:"")}
     ${SD.map(d=>`<section class="tv-day${d===td?" today":""}"><h2>${esc(dLabel(d))}${d===td?" · today":""}</h2>
@@ -3158,6 +3164,14 @@ async function acceptOffer(oid,tid){const o=S.offers[oid];if(!o)return;
   if(!await patch("offers",oid,{status:"taken",takenBy:tid,takenAt:now,lessonId:ref.id}))return;
   try{await ref.set({studentId:o.studentId||"",teacherId:tid,classroomId:o.classroomId||"",date:o.date,time:o.time,duration:o.duration||75,status:"scheduled",materials:[],notes:o.studentId?"":"New student: "+(o.studentName||""),fromOffer:oid,createdAt:now,updatedAt:now,pub:{studentId:o.studentId||"",teacherId:tid,classroomId:o.classroomId||"",date:o.date,time:o.time,endTime:"",duration:o.duration||75,subTeacherId:"",sharedAt:now}})}catch(e){handleErr(e)}
   toast("It's yours! The lesson is in your week.");}
+let pushState=null;
+function pushCardHtml(){const P=window.WA_PUSH;if(!P)return "";const sup=P.support();
+  if(pushState===null){pushState="checking";P.isOn().then(on=>{pushState=on?"on":(P.permission()==="denied"?"denied":"off");render()});return ""}
+  if(pushState==="on"||pushState==="checking"||pushState==="dismissed")return "";
+  if(sup==="unsupported")return "";
+  if(sup==="needs-home-screen")return `<section class="tv-push"><b>🔔 Get notified on your iPhone</b><p>To receive notifications, add this app to your Home Screen first: tap <b>Share</b> (□↑) → <b>Add to Home Screen</b>. Then open Won Academy from the new icon and turn notifications on here.</p><button type="button" class="tv-btn ghost" data-pushx>Later</button></section>`;
+  if(pushState==="denied")return `<section class="tv-push"><b>🔔 Notifications are blocked</b><p>Your browser is blocking notifications for this app. Allow them in the browser or phone settings for app.wonacademy.cz, then reload.</p><button type="button" class="tv-btn ghost" data-pushx>OK</button></section>`;
+  return `<section class="tv-push"><b>🔔 Turn on notifications</b><p>Get a message on your phone when your schedule changes or there's a new lesson offer. The app icon also shows how many new things are waiting.</p><div class="tv-push-b"><button type="button" class="tv-btn done" data-pushon>Turn on</button><button type="button" class="tv-btn ghost" data-pushx>Later</button></div></section>`}
 function offerCardsFor(tid){const td=today();
   return arr("offers").filter(o=>Array.isArray(o.teachers)&&o.teachers.includes(tid)&&o.date>=td&&!(o.declined||{})[tid]&&!(o.status!=="open"&&o.takenBy!==tid&&(o.hidden||{})[tid])).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(o=>{
     if(o.status==="open")return `<article class="of-card open"><div class="of-h">New lesson offer</div><div class="of-w"><b>${esc(offerWhat(o))}</b> · ${esc(offerWho(o))}</div>${o.note?`<div class="muted" style="font-size:13px">${esc(o.note)}</div>`:""}
@@ -3902,6 +3916,8 @@ function wire(main){
   main.querySelectorAll("td.ts-l[data-xs^='les|']").forEach(td=>td.oncontextmenu=e=>{e.preventDefault();lessonMenu(td.dataset.xs.slice(4),e.clientX,e.clientY)});
   main.querySelectorAll("[data-pendall]").forEach(b=>b.onclick=openPending);
   main.querySelectorAll("[data-onseen]").forEach(b=>b.onclick=async()=>{const n=S.notes[b.dataset.onseen],me=tvTeacher;if(!n||!me)return;if(!lock){toast("Preview only — the teacher taps this on their own view");return}b.disabled=true;await patch("notes",n.id,{tSeen:Object.assign({},n.tSeen||{},{[me]:new Date().toISOString()})})});
+  main.querySelectorAll("[data-pushon]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{const ok=await window.WA_PUSH.enable(tvTeacher);pushState=ok?"on":(window.WA_PUSH.permission()==="denied"?"denied":"off");toast(ok?"Notifications on ✓":"Notifications not allowed")}catch(e){toast("Couldn't turn on notifications: "+(e&&e.message||e));pushState="off"}render()});
+  main.querySelectorAll("[data-pushx]").forEach(b=>b.onclick=()=>{pushState="dismissed";render()});
   main.querySelectorAll("[data-pcok]").forEach(b=>b.onclick=async()=>{const l=(S.rawLessons||S.lessons)[b.dataset.pcok];const me=tvTeacher;if(!l||!l.pubChange||!me)return;if(!lock){toast("Preview only — the teacher taps Seen on their own view");return}b.disabled=true;
     if(await patch("lessons",l.id,{pubChange:Object.assign({},l.pubChange,{seen:Object.assign({},l.pubChange.seen||{},{[me]:new Date().toISOString()})})}))toast("Seen ✓")});
   main.querySelectorAll("[data-offseen]").forEach(b=>b.onclick=async()=>{const l=(S.rawLessons||S.lessons)[b.dataset.offseen];if(!l)return;if(!lock){toast("Preview only — the teacher taps OK on their own view");return}b.disabled=true;if(await patch("lessons",l.id,{offSeen:l.status}))toast("OK — removed from your schedule")});

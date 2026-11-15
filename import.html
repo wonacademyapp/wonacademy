@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Import backup · Won Academy Desk</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.80.0/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="adapter.js"></script>
+<style>
+  body{margin:0;background:#F3F5F8;color:#16181d;font:15px/1.55 "Public Sans",system-ui,sans-serif}
+  main{max-width:620px;margin:40px auto;padding:0 16px}
+  .card{background:#fff;border:1px solid #D6DCE6;border-radius:14px;padding:22px}
+  h1{font-size:24px;margin:0 0 6px}
+  .muted{color:#5b6270}
+  button{font:600 15px/1 inherit;padding:11px 16px;border:0;border-radius:9px;background:#2f5bd3;color:#fff;cursor:pointer}
+  button[disabled]{opacity:.55}
+  input[type=file]{margin:14px 0}
+  pre{background:#F3F5F8;border-radius:8px;padding:10px;white-space:pre-wrap;font-size:13px;max-height:280px;overflow:auto}
+  .ok{color:#1f8a4c}.err{color:#b4441f}
+</style>
+</head>
+<body>
+<main><div class="card">
+  <h1>Import your data</h1>
+  <p class="muted">Use this once, when you move from Claude. In the old app press <b>Download backup</b> (bottom of the left menu), then choose that file here. Importing again is safe: records with the same id are simply replaced.</p>
+  <input type="file" id="f" accept=".json,application/json">
+  <div><button id="go" disabled>Import</button></div>
+  <pre id="log" hidden></pre>
+  <p id="done" hidden class="ok"><b>✓ Done.</b> Open the app: <a href="./">go to Won Academy Desk</a>.</p>
+</div></main>
+<script>
+(async function(){
+  const f=document.getElementById("f"),go=document.getElementById("go"),log=document.getElementById("log");
+  let data=null;const say=t=>{log.hidden=false;log.textContent+=t+"\n";log.scrollTop=1e9};
+  await window.claude.use("db"); // waits for sign-in
+  f.onchange=async()=>{try{data=JSON.parse(await f.files[0].text());go.disabled=false;say("File read: "+f.files[0].name)}catch(e){say("This isn't a backup file: "+e.message)}};
+  go.onclick=async()=>{
+    if(!data)return;go.disabled=true;const sb=window.__sb;const rows=[];
+    for(const [k,v] of Object.entries(data)){
+      if(Array.isArray(v))v.forEach(d=>{if(d&&d.id!=null){const o=Object.assign({},d);delete o.id;rows.push({collection:k,id:String(d.id),data:o})}});
+    }
+    if(data.settings)rows.push({collection:"settings",id:"main",data:data.settings});
+    if(data.template)rows.push({collection:"settings",id:"template",data:data.template});
+    say("Records to import: "+rows.length);
+    for(let i=0;i<rows.length;i+=400){const part=rows.slice(i,i+400);const {error}=await sb.from("docs").upsert(part);
+      if(error){say("✗ Stopped: "+error.message+"\n(Are you signed in with the owner email from supabase-setup.sql?)");go.disabled=false;return}
+      say("Imported "+Math.min(i+400,rows.length)+" / "+rows.length)}
+    document.getElementById("done").hidden=false;
+  };
+})();
+</script>
+</body>
+</html>

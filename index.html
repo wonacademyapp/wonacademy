@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f5bd3'/%3E%3Ctext x='16' y='22' font-size='17' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F65BF">
+<meta name="apple-mobile-web-app-title" content="Won Academy">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <!-- Supabase connection (see README). Do not edit below unless you know what you're doing. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.80.0/dist/umd/supabase.js"></script>
@@ -1095,6 +1099,19 @@ details.sh-t[open] summary{margin-bottom:6px}
 .tg-tbl{width:100%;min-width:0!important;margin:8px 0 2px;border-collapse:collapse;font-size:14px}
 .tg-tbl td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .tg-tbl td:first-child{white-space:nowrap;width:1%}
+.acc-invall{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 16px}
+.acc-invall .muted{font-size:13px}
+.pdiff{display:block;margin-top:4px;border:1px solid #f0b35a;background:#fff1dc;color:#8a4b00;border-radius:6px;font:600 11.5px/1.3 inherit;padding:3px 6px;cursor:pointer;text-align:left;white-space:normal}
+.pdiff:hover{background:#ffe6c2}
+.pdiff-banner{background:#fff1dc;border-color:#f0b35a;color:#8a4b00}
+.tv-paid{background:var(--pay-grey);border-color:transparent}
+.ar-rev{border-color:#f0b35a;background:#fff8ec}
+.ar-story{font-size:13.5px;margin:4px 0 6px;padding:6px 10px;border-left:3px solid #f0b35a;background:var(--surface)}
+.hist-t td{vertical-align:top}
+.hist-d{font-size:13px;max-width:560px}
+.hist-d>div{margin-bottom:2px}
+.hist-t tr.undone td{opacity:.55}
+.hist-t tr.undone td:last-child{opacity:1}
 </style>
 
 <div class="app">
@@ -1113,8 +1130,8 @@ details.sh-t[open] summary{margin-bottom:6px}
 
 <script>
 (function(){
-const COLS=["checks","tchanges","visitors","students","teachers","lessons","payments","materials","classrooms","billing","payroll","notes","closing","bookstock","actlog","offers","calnotes","access"];
-const S={checks:{},tchanges:{},visitors:{},students:{},teachers:{},lessons:{},payments:{},materials:{},classrooms:{},billing:{},payroll:{},notes:{},closing:{},bookstock:{},actlog:{},offers:{},calnotes:{},access:{},settings:{currency:"Kč",defaultFee:500,defaultLength:60}};
+const COLS=["changelog","checks","tchanges","visitors","students","teachers","lessons","payments","materials","classrooms","billing","payroll","notes","closing","bookstock","actlog","offers","calnotes","access"];
+const S={changelog:{},checks:{},tchanges:{},visitors:{},students:{},teachers:{},lessons:{},payments:{},materials:{},classrooms:{},billing:{},payroll:{},notes:{},closing:{},bookstock:{},actlog:{},offers:{},calnotes:{},access:{},settings:{currency:"Kč",defaultFee:500,defaultLength:60}};
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const loaded={};
 /* ---------- undo / redo (every change you make, grouped per click or key press) ---------- */
@@ -1122,10 +1139,16 @@ let urUndo=[],urRedo=[],urBusy=false,urSeq=0,urLastInput=0;
 ["pointerdown","keydown"].forEach(ev=>document.addEventListener(ev,e=>{if(e.target&&e.target.closest&&e.target.closest(".ur"))return;urSeq++;urLastInput=Date.now()},true));
 function urBefore(col,id){if(col==="settings"){const v=id==="template"?S.template:id==="main"?S.settings:null;return v?JSON.parse(JSON.stringify(v)):null}
   const o=S[col]&&S[col][id];if(!o)return null;const c=JSON.parse(JSON.stringify(o));delete c.id;return c}
-function urRecord(col,id,before,after){if(urBusy||!canWrite||Date.now()-urLastInput>15000)return;
+const CL_SKIP=["changelog","actlog","visitors","checks","tchanges"];
+let clT=null;
+function clQueue(st){clearTimeout(clT);clT=setTimeout(()=>clSave(st),1500)}
+async function clSave(st){if(!db||lock||!st||!st.ops.length)return;const big=st.ops.length>300;
+  const doc={at:new Date(st.at).toISOString(),label:urName(st),ops:big?st.ops.slice(0,300):st.ops,count:st.ops.length,noUndo:big,by:(meInfo&&(meInfo.email||meInfo.name))||""};
+  try{const ref=st.clId?db.collection("changelog").doc(st.clId):db.collection("changelog").doc();st.clId=ref.id;await ref.set(JSON.parse(JSON.stringify(doc)))}catch(e){}}
+function urRecord(col,id,before,after){if(CL_SKIP.includes(col))return;if(urBusy||!canWrite||Date.now()-urLastInput>15000)return;
   let st=urUndo[urUndo.length-1];if(!st||st.seq!==urSeq){st={seq:urSeq,at:Date.now(),label:"",ops:[]};urUndo.push(st);if(urUndo.length>50)urUndo.shift()}
-  st.ops.push({col,id,before,after});urRedo=[];renderUR()}
-function urLabel(msg){if(urBusy)return;const st=urUndo[urUndo.length-1];if(st&&!st.label&&st.seq===urSeq&&Date.now()-st.at<20000){st.label=String(msg).replace(/\s*·\s*Ctrl\+Z to undo/i,"").replace(/…$/,"");renderUR()}}
+  st.ops.push({col,id,before,after});urRedo=[];renderUR();if(!lock)clQueue(st)}
+function urLabel(msg){if(urBusy)return;const st=urUndo[urUndo.length-1];if(st&&!st.label&&st.seq===urSeq&&Date.now()-st.at<20000){st.label=String(msg).replace(/\s*·\s*Ctrl\+Z to undo/i,"").replace(/…$/,"");renderUR();if(!lock)clQueue(st)}}
 function urName(st){if(st.label)return st.label;const o=st.ops[0];const kind=o.before==null?"Added":o.after==null?"Deleted":"Changed";return `${kind} ${o.col==="settings"?"settings":o.col.replace(/s$/,"")}${st.ops.length>1?` (+${st.ops.length-1})`:""}`}
 function wrapDb(raw){
   const wrapDoc=(ref,col,id)=>({get id(){return ref.id},onSnapshot:(...a)=>ref.onSnapshot(...a),get:(...a)=>ref.get(...a),
@@ -1174,7 +1197,7 @@ function isOff(l){return l.status==="cancelled"||l.status==="rescheduled"||l.sta
 function payTeacher(l){return l.teacherId}
 function stLabel(k){const x=STAT.find(s=>s[0]===k);return x?x[1]:(k||"")}
 const LEVELS=["","A1","A2","B1","B2","C1","C2","Kids","Exam prep"];
-const VIEWS=[["timetable","Timetable"],["calendar","Calendar notes"],["classrooms","Classrooms"],["students","Students"],["teachers","Teachers"],["teacherpay","Teacher Payroll"],["lessons","Lessons"],["homework","Homework"],["reports","Action required"],["offers","Lesson offers"],["makeups","Make-up lessons"],["payments","Tuition Fees"],["report","Monthly report"],["books","Books"],["materials","Materials"],["teacherview","Teacher view"],["studentview","Student view"],["parentview","Parent view"],["access","Who sees what"]];
+const VIEWS=[["timetable","Timetable"],["calendar","Calendar notes"],["classrooms","Classrooms"],["students","Students"],["teachers","Teachers"],["teacherpay","Teacher Payroll"],["lessons","Lessons"],["homework","Homework"],["reports","Action required"],["offers","Lesson offers"],["makeups","Make-up lessons"],["moved","Moved to next month"],["history","Change history"],["payments","Tuition Fees"],["report","Monthly report"],["books","Books"],["materials","Materials"],["teacherview","Teacher view"],["studentview","Student view"],["parentview","Parent view"],["access","Who sees what"]];
 let week=null, cday=0;
 
 function ym(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
@@ -1277,7 +1300,7 @@ function handleErr(e){
 let toastT;function toast(msg){urLabel(msg);let t=document.querySelector(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t)}t.textContent=msg;clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),2800)}
 
 /* ---------- modal + forms ---------- */
-function confirmBox(title,text,ok,html){return new Promise(res=>{const m=modal(`<h2 style="margin:0 0 6px">${esc(title)}</h2>${html?`<div style="margin:0 0 14px">${html}</div>`:`<p style="margin:0 0 14px;line-height:1.5">${esc(text)}</p>`}<div class="ds-foot"><span style="flex:1"></span><button type="button" class="btn sm" id="cb-no">Cancel</button><button type="button" class="btn sm pri" id="cb-ok">${esc(ok||"Yes")}</button></div>`);
+function confirmBox(title,text,ok,html){return new Promise(res=>{const m=modal(`<h2 style="margin:0 0 6px">${esc(title)}</h2>${html?`<div style="margin:0 0 14px">${html}</div>`:`<p style="margin:0 0 14px;line-height:1.5;white-space:pre-line">${esc(text)}</p>`}<div class="ds-foot"><span style="flex:1"></span><button type="button" class="btn sm" id="cb-no">Cancel</button><button type="button" class="btn sm pri" id="cb-ok">${esc(ok||"Yes")}</button></div>`);
   let done=false;const fin=v=>{if(done)return;done=true;closeModal();res(v)};m.querySelector("#cb-ok").onclick=()=>fin(true);m.querySelector("#cb-no").onclick=()=>fin(false);
   const root=document.getElementById("modal-root"),obs=new MutationObserver(()=>{if(!root.contains(m)){obs.disconnect();if(!done){done=true;res(false)}}});obs.observe(root,{childList:true,subtree:true});m.querySelector("#cb-ok").focus()})}
 /* keep drop-down panels (clashes, week tools…) fully on screen */
@@ -1887,6 +1910,11 @@ function shortRange(mon){const e=addDays(mon,6);return `${Number(mon.slice(8))}.
 const PAYF=[["week","Every week"],["2weeks","Every 2 weeks"],["month","Every month"]];
 function payFreq(t){return PAYF.some(x=>x[0]===t.payFreq)?t.payFreq:"week"}
 function taxPct(t){return Number(t.tax)||0}
+function linkedOf(l){for(const k of ["rescheduledTo","makeupTo","changedTo"]){const x=l[k]&&S.lessons[l[k]];if(x)return {k,l:x}}return null}
+function rvStory(l){const t=l.tRec||{},tn=nm("teachers",payTeacher(l)),lk=linkedOf(l);
+  return `${tn} marked “${tLabel(t.prevStatus)}” → you decided “${stLabel(l.status)}”${lk?` (new lesson ${dLabel(lk.l.date)} ${lk.l.time||""})`:""} → ${tn} changed it to “${tLabel(t.status)}”.`}
+function payDiffBtn(id,paidAmt,now){if(paidAmt==null||Math.round(now)===Math.round(paidAmt))return "";const d=Math.round(now)-Math.round(paidAmt);
+  return `<button type="button" class="pdiff" data-pdiff="${esc(id)}|${Math.round(now)}" title="Something changed after you marked this paid">⚠ Paid ${money(paidAmt)} · now ${money(now)} (${d>0?"+":"−"}${money(Math.abs(d))})</button>`}
 function vTeacherPay(){
   const weeks=monthMondays(month);
   const teachers=arr("teachers").sort(teacherOrder);
@@ -1903,14 +1931,14 @@ function vTeacherPay(){
       let ctl="";
       if(f==="week")ctl=gate(t.id,w,addDays(w,6),"Week "+shortRange(w),isPaid,sel(`data-pwsel="${esc(t.id)}|${w}"`,isPaid,"Paid status"));
       else if(f==="2weeks"){const pr=pairs.find(p=>p.includes(w));if(pr[pr.length-1]===w){const amt=pr.reduce((a,x)=>a+C[weeks.indexOf(x)].wage,0);{const pp=pr.every(x=>wPaid(x,weeks.indexOf(x)));ctl=amt?`<small class="pd">${pr.length>1?"2 weeks: ":""}${money(Math.round(amt*(1-tx/100)))}</small>`+gate(t.id,pr[0],addDays(pr[pr.length-1],6),"Weeks "+shortRange(pr[0])+(pr.length>1?" and "+shortRange(pr[1]):""),pp,sel(`data-pwsel="${esc(t.id)}|${pr.join(",")}"`,pp,"Paid status for both weeks")):""}}}
-      if(!c.wage&&!c.doc)return `<td class="pw-empty${isPaid&&f==="month"?" pc yes":""}">${canWrite?`<button type="button" class="mini pw-add" data-pw="${esc(t.id)}|${w}" aria-label="Enter hours for ${esc(t.name)}, week ${shortRange(w)}">+</button>`:""}${f==="2weeks"?ctl:""}</td>`;
+      if(!c.wage&&!(c.doc&&c.doc.paid&&c.doc.paidAmount))if(!c.doc)return `<td class="pw-empty${isPaid&&f==="month"?" pc yes":""}">${canWrite?`<button type="button" class="mini pw-add" data-pw="${esc(t.id)}|${w}" aria-label="Enter hours for ${esc(t.name)}, week ${shortRange(w)}">+</button>`:""}${f==="2weeks"?ctl:""}</td>`;
       const wh=f!=="week"?checksFor(t.id,w,addDays(w,6)).filter(x=>hardChk(x.c)).length:0;
       if(wh)ctl=`<button type="button" class="rc-btn" data-chk="${esc(t.id)}|${w}|${addDays(w,6)}|Week ${esc(shortRange(w))}">⚠ ${wh} mismatch${wh>1?"es":""}</button>`+ctl;
-      return `<td class="pc ${isPaid?"yes":"no"}"><div class="pw"><button type="button" class="pw-amt" data-pw="${esc(t.id)}|${w}" title="Open the days of this week"><b class="num">${money(c.wage)}</b></button>${ctl}
+      return `<td class="pc ${isPaid?"yes":"no"}"><div class="pw"><button type="button" class="pw-amt" data-pw="${esc(t.id)}|${w}" title="Open the days of this week"><b class="num">${money(c.wage)}</b></button>${f!=="month"&&isPaid&&c.doc?payDiffBtn(payWeekId(t.id,w),c.doc.paidAmount,c.wage):""}${ctl}
         ${f==="week"&&isPaid&&c.doc.paidDate?`<small class="pd">${esc(dLabel(c.doc.paidDate))}</small>`:""}</div></td>`}).join("");
     const tax=Math.round(rowTot*tx/100), net=rowTot-tax;tot+=rowTot;taxT+=tax;
     weeks.forEach((w,i)=>{const nw=Math.round(C[i].wage*(1-tx/100));if(wPaid(w,i))sent+=nw;else toSend+=nw});
-    const monthCell=`<td class="num${f==="month"?" pc "+(md&&md.paid?"yes":"no"):""}"><b>${rowTot?money(rowTot):"–"}</b>${tx&&rowTot?`<div class="taxl">−${tx}% tax ${money(tax)}</div><div class="taxl net">Send ${money(net)}</div>`:""}${f==="month"&&rowTot?`<div style="margin-top:4px">${gate(t.id,weeks[0],addDays(weeks[weeks.length-1],6),monthLabel(month),!!(md&&md.paid),sel(`data-pmsel="${esc(t.id)}"`,!!(md&&md.paid),"Paid status for the month"))}</div>${md&&md.paid&&md.paidDate?`<small class="pd">${esc(dLabel(md.paidDate))}</small>`:""}`:""}</td>`;
+    const monthCell=`<td class="num${f==="month"?" pc "+(md&&md.paid?"yes":"no"):""}"><b>${rowTot?money(rowTot):"–"}</b>${tx&&rowTot?`<div class="taxl">−${tx}% tax ${money(tax)}</div><div class="taxl net">Send ${money(net)}</div>`:""}${f==="month"&&rowTot?`<div style="margin-top:4px">${gate(t.id,weeks[0],addDays(weeks[weeks.length-1],6),monthLabel(month),!!(md&&md.paid),sel(`data-pmsel="${esc(t.id)}"`,!!(md&&md.paid),"Paid status for the month"))}</div>${md&&md.paid&&md.paidDate?`<small class="pd">${esc(dLabel(md.paidDate))}</small>`:""}${md&&md.paid?payDiffBtn("m-"+t.id+"-"+month.replace("-",""),md.paidAmount,rowTot):""}`:""}</td>`;
     const mh=checksFor(t.id,weeks[0],addDays(weeks[weeks.length-1],6)).filter(x=>hardChk(x.c)).length;
     return `<tr${mh?' class="tp-warn"':""}><td><b>${esc(t.name)}</b>${mh?` <button type="button" class="rc-tag" data-chk="${esc(t.id)}|${weeks[0]}|${addDays(weeks[weeks.length-1],6)}|${esc(monthLabel(month))}" title="Your mark and the teacher's don't match">⚠ ${mh} mismatch${mh>1?"es":""}</button>`:""}<div class="muted" style="font-size:12px">${esc(rateLabel(t))}${tx?` · ${tx}% tax withheld`:""}</div></td>${cells}${monthCell}<td class="pnote">${canWrite?`<button type="button" class="pn-btn" data-pnote="${esc(t.id)}">${md&&md.note?esc(md.note):'<span class="muted">Add note</span>'}</button>`:esc(md&&md.note||"")}</td></tr>`};
   const head=`<thead><tr><th>Teacher</th>${weeks.map(w=>`<th class="num">Week ${esc(shortRange(w))}</th>`).join("")}<th class="num">Month</th><th>Note</th></tr></thead>`;
@@ -1918,6 +1946,8 @@ function vTeacherPay(){
   const body=groups.map(([k,l,T])=>`<h2 style="margin-top:20px">Paid ${esc(l.toLowerCase())} <span class="muted" style="font-weight:400;font-size:14px">· ${T.length}</span></h2><div class="tbl-wrap"><table class="paytbl tptbl">${head}<tbody>${T.map(row).join("")}</tbody></table></div>`).join("");
   return `<div class="head"><div><h1>Teacher Payroll</h1><p class="sub">What each teacher earned, week by week, and what's been paid. Grey means paid. Worked out from lessons marked Done, No show – student or Changed teacher, unless you enter the hours yourself.</p></div>
   <div class="tools">${monthNav()}</div></div>
+  ${(()=>{let n=0;teachers.forEach(t=>{const f=payFreq(t);if(f==="month"){const md=mnote(t.id);if(md&&md.paid&&md.paidAmount!=null&&Math.round(weeks.reduce((a,w)=>a+weekCalc(t.id,w).wage,0))!==Math.round(md.paidAmount))n++}else weeks.forEach(w=>{const c=weekCalc(t.id,w);if(c.doc&&c.doc.paid&&c.doc.paidAmount!=null&&Math.round(c.wage)!==Math.round(c.doc.paidAmount))n++})});
+    return n?`<div class="rc-banner pdiff-banner">⚠ ${n} payment${n>1?"s":""} changed after you marked ${n>1?"them":"it"} paid — what you paid and what the lessons add up to now are different. Look for the orange ⚠ Paid … · now … below.</div>`:""})()}
   ${(()=>{const n=teachers.reduce((a,t)=>a+checksFor(t.id,weeks[0],addDays(weeks[weeks.length-1],6)).filter(x=>hardChk(x.c)).length,0);return n?`<div class="rc-banner">⚠ ${n} lesson${n>1?"s":""} where your timetable and the teacher's record don't match. Pay is worked out from <b>your</b> marks; check the ⚠ ones if you want.</div>`:""})()}
   <div class="kpis"><div class="kpi"><span>Wages · ${esc(monthLabel(month).split(" ")[0])}</span><b>${money(tot)}</b></div><div class="kpi"><span>Sent</span><b style="color:var(--good)">${money(sent)}</b></div><div class="kpi"><span>Still to send</span><b style="color:var(--bad)">${money(toSend)}</b></div><div class="kpi"><span>Tax withheld</span><b>${money(taxT)}</b></div></div>
   ${teachers.length?body+`<p class="muted" style="font-size:13px">A week belongs to the month its Monday falls in. Set each teacher's rate, how often you pay them and tax under Teachers → click the teacher.</p>`:`<div class="panel empty">No teachers yet.</div>`}`;
@@ -2278,10 +2308,15 @@ function vTeacherView(){
       return `<article class="tv-scard"><div class="tv-sh"><div><h3>${esc(s.name)}</h3><div class="muted" style="font-size:13px">${esc([s.language,s.level,others.length?"Also taught by "+others.join(", "):"",next?"Next: "+dLabel(next.date)+" "+(next.time||""):""].filter(Boolean).join(" · "))}</div>${Array.isArray(s.books)&&s.books.length?`<div class="bk-prog"><span class="feed-lbl">Books</span>${s.books.map((b,i)=>`<div class="bk-row"><span>${esc(b.title)}</span>${bkSel(sid,i,b)}</div>`).join("")}</div>`:""}</div><button type="button" class="tv-btn ghost" data-tvsnote="${esc(sid)}">Add note</button></div>
       ${feed.length?feed.slice(0,4).map(x=>x.html).join("")+(feed.length>4?`<button type="button" class="tv-more" data-tvstu="${esc(sid)}">Show all ${feed.length}</button>`:""):`<p class="muted" style="margin:6px 0 0;font-size:13px">No homework or notes yet.</p>`}</article>`}).join(""):`<div class="panel empty">No students yet.</div>`;
   }else{
-    const weeks=monthMondays(month);let tot=0;
-    body=`<div class="tv-weeknav">${monthNav()}</div><div class="tbl-wrap"><table><thead><tr><th>Week</th><th class="num">Minutes</th><th class="num">Wage</th><th>Paid</th></tr></thead><tbody>
-    ${weeks.map(w=>{const c=tvWeekCalc(t.id,w);tot+=c.wage;const p=c.doc&&c.doc.paid;return `<tr><td>${esc(shortRange(w))}</td><td class="num">${c.mins}</td><td class="num">${money(c.wage)}</td><td>${c.wage?`<span class="rtag" style="${p?"background:var(--pay-grey);border-color:transparent":""}">${p?"Paid"+(c.doc.paidDate?" "+esc(dLabel(c.doc.paidDate)):""):"Not yet"}</span>`:""}</td></tr>`}).join("")}
-    <tr class="tot"><td><b>Total</b></td><td></td><td class="num"><b>${money(tot)}</b></td><td></td></tr></tbody></table></div><p class="muted" style="font-size:13px;margin:8px 2px 0">Counts the lessons you marked <b>Done</b>. Student no show, excused, teacher absent, not done and other are not added.</p>`;
+    const weeks=monthMondays(month);let tot=0,paidTot=0;const f=payFreq(t),tx=taxPct(t);
+    const docAmt=doc=>doc?(doc.paidAmount!=null?Number(doc.paidAmount):doc.days&&Object.keys(doc.days).length?Object.values(doc.days).reduce((a,x)=>a+(Number(x.wage)||0),0):null):null;
+    const md=S.payroll["m-"+t.id+"-"+month.replace("-","")];
+    const paidCell=(doc,fallback)=>{if(doc&&doc.paid){const a=docAmt(doc)??fallback;if(a)paidTot+=a;return `<span class="rtag tv-paid">✓ Paid${a!=null?" "+money(a):""}${doc.paidDate?" · "+esc(dLabel(doc.paidDate)):""}</span>`}return fallback||docAmt(doc)?`<span class="rtag">Not yet</span>`:""};
+    body=`<div class="tv-weeknav">${monthNav()}</div><div class="tbl-wrap"><table class="tv-hours"><thead><tr><th>Week</th><th class="num">Minutes</th><th class="num">Your Done lessons</th><th>Paid by Won Academy</th></tr></thead><tbody>
+    ${weeks.map(w=>{const c=tvWeekCalc(t.id,w);tot+=c.wage;const pc=f==="month"?(c.wage?`<span class="muted" style="font-size:12.5px">paid monthly</span>`:""):paidCell(c.doc,c.wage);return `<tr><td>${esc(shortRange(w))}</td><td class="num">${c.mins||""}</td><td class="num">${c.wage?money(c.wage):""}</td><td>${pc}</td></tr>`}).join("")}
+    ${f==="month"&&(md||tot)?`<tr><td><b>${esc(monthLabel(month))}</b></td><td></td><td></td><td>${paidCell(md,tot)}</td></tr>`:""}
+    <tr class="tot"><td><b>Total</b></td><td></td><td class="num"><b>${money(tot)}</b></td><td>${paidTot?`<b>${money(paidTot)}</b> paid`:""}</td></tr></tbody></table></div>
+    <p class="muted" style="font-size:13px;margin:8px 2px 0"><b>Your Done lessons</b> counts the lessons you marked Done (no show, excused, teacher absent, not done and other are not added). <b>Paid by Won Academy</b> is what the school recorded as paid${tx?`, before ${tx}% tax`:""}. If something doesn't match, please contact the office.</p>`;
   }
   return `<div class="tv-wrap">${banner}<div class="tv-head"><h1>Hi, ${esc(t.name)}</h1><div class="modes" role="group" aria-label="Section">${tabs}</div></div>${body}</div>`;
 }
@@ -2512,6 +2547,38 @@ function addMakeup(){
       if(x.mkDate&&t)await bookMakeup(Object.assign({id:ref.id},o),{date:x.mkDate,time:t,teacherId:x.teacherId,classroomId:x.classroomId,duration:o.duration});
       toast(x.mkDate&&t?"Make-up added and booked":"Make-up added. Book the date when you know it.");return true}});
 }
+/* ---------- moved to next month ---------- */
+function vMoved(){const L=arr("lessons").filter(l=>l.status==="nextmonth"&&validDate(l.date)).sort((a,b)=>(b.date+(b.time||"")).localeCompare(a.date+(a.time||"")));
+  const nextM=d=>{const [y,m]=d.split("-").map(Number);return m===12?`${y+1}-01`:`${y}-${String(m+1).padStart(2,"0")}`};
+  const groups={};L.forEach(l=>{const k=nextM(l.date);(groups[k]=groups[k]||[]).push(l)});
+  const keys=Object.keys(groups).sort().reverse();
+  return `<div class="head"><div><h1>Moved to next month</h1><p class="sub">Every lesson marked “Moved to next month”, grouped by the month it moves to. The student isn't charged for it in its own month. Change the status here to undo it.</p></div></div>
+  ${L.length?keys.map(k=>{const G=groups[k],by={};G.forEach(l=>{by[l.studentId]=(by[l.studentId]||0)+1});return `<h2 style="margin-top:18px">Into ${esc(monthLabel(k))} <span class="chip">${G.length}</span></h2>
+    <p class="muted" style="margin:-6px 0 8px;font-size:13px">${Object.entries(by).map(([sid,n])=>`${esc(nm("students",sid))} ${n}×`).join(" · ")}</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Lesson</th><th>Student</th><th>Teacher</th><th>Note</th><th>Status</th></tr></thead><tbody>${G.map(l=>`<tr class="click" data-les="${esc(l.id)}"><td class="mono" style="white-space:nowrap">${esc(dLabel(l.date))} ${esc(l.time||"")}</td><td><b>${esc(nm("students",l.studentId))}</b></td><td>${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}${l.tRec&&tst(l)!=="scheduled"?`<div class="muted" style="font-size:12px">teacher marked: ${esc(tLabel(tst(l)))}</div>`:""}</td><td class="muted" style="font-size:13px">${esc(l.statusNote||"")}</td><td>${statusSel(l)}</td></tr>`).join("")}</tbody></table></div>`}).join(""):`<div class="panel empty">No lessons are moved to next month.</div>`}`}
+/* ---------- change history (persistent, with undo) ---------- */
+let histAll=false,clPruned=false;
+const CL_F=[["status","Status",v=>stLabel(v)],["date","Date",v=>v?dLabel(v):"—"],["time","Time",v=>v||"—"],["teacherId","Teacher",v=>v?nm("teachers",v):"—"],["subTeacherId","Sub teacher",v=>v?nm("teachers",v):"—"],["classroomId","Room",v=>{const r=S.classrooms[v];return r?roomLetter(r):"—"}],["studentId","Student",v=>v?nm("students",v):"—"],["duration","Length",v=>v?v+" min":"—"],["paid","Paid",v=>v?"Paid":"Not yet"],["paidAmount","Paid amount",v=>v==null?"—":money(v)],["fee","Fee",v=>v==null||v===""?"—":money(v)],["name","Name",v=>v||"—"],["email","Email",v=>v||"—"],["parentEmail","Parent email",v=>v||"—"],["rate","Rate",v=>v==null||v===""?"—":v]];
+function clWhat(o){const v=o.after||o.before||{};
+  if(o.col==="lessons")return `Lesson · ${nm("students",v.studentId)} · ${v.date?dLabel(v.date):""} ${v.time||""}`;
+  if(o.col==="settings")return o.id==="template"?"Default schedule":"Settings";
+  const nmv=v.name||v.title||v.text||"";return `${o.col.replace(/s$/,"").replace(/^./,c=>c.toUpperCase())}${nmv?" · "+String(nmv).slice(0,40):""}`}
+function clDiff(o){if(o.before==null)return "added";if(o.after==null)return "deleted";const out=[];
+  CL_F.forEach(([k,lb,f])=>{const a=o.before[k],b=o.after[k];if(JSON.stringify(a??null)!==JSON.stringify(b??null))out.push(`${lb}: ${f(a)} → ${f(b)}`)});
+  if(!out.length){const ks=Object.keys(Object.assign({},o.before,o.after)).filter(k=>!["updatedAt","pub","createdAt"].includes(k)&&JSON.stringify(o.before[k]??null)!==JSON.stringify(o.after[k]??null));if(ks.length)out.push("changed "+ks.slice(0,4).join(", "))}
+  return out.join(" · ")}
+function vHistory(){const H=arr("changelog").sort((a,b)=>(b.at||"").localeCompare(a.at||""));
+  if(canWrite&&!clPruned&&H.length>600){clPruned=true;H.slice(600).forEach(h=>{try{db.collection("changelog").doc(h.id).delete()}catch(e){}})}
+  const show=histAll?H.slice(0,600):H.slice(0,80);
+  return `<div class="head"><div><h1>Change history</h1><p class="sub">Every change made in the office app, newest first, with who made it. Press <b>Undo</b> to put things back the way they were before that change.</p></div></div>
+  ${H.length?`<div class="tbl-wrap"><table class="hist-t"><thead><tr><th>When</th><th>Change</th><th>Details</th><th></th></tr></thead><tbody>${show.map(h=>{const ops=h.ops||[];return `<tr class="${h.undone?"undone":""}"><td class="mono" style="white-space:nowrap">${esc(dLabel((h.at||"").slice(0,10)))} ${esc((new Date(h.at)).toTimeString().slice(0,5))}${h.by?`<div class="muted" style="font-size:11.5px">${esc(String(h.by).split("@")[0])}</div>`:""}</td><td><b>${esc(h.label||"Change")}</b>${(h.count||ops.length)>1?` <span class="muted">· ${h.count||ops.length} items</span>`:""}</td><td class="hist-d">${ops.slice(0,4).map(o=>`<div><span>${esc(clWhat(o))}</span>${clDiff(o)?` <span class="muted">— ${esc(clDiff(o))}</span>`:""}</div>`).join("")}${ops.length>4?`<div class="muted">+ ${ops.length-4} more</div>`:""}</td><td>${h.undone?`<span class="chip">Undone ${esc(h.undoneAt?dLabel(h.undoneAt.slice(0,10)):"")}</span>`:canWrite&&!h.noUndo?`<button type="button" class="btn sm" data-clundo="${esc(h.id)}">↺ Undo</button>`:""}</td></tr>`}).join("")}</tbody></table></div>
+  ${H.length>80&&!histAll?`<button type="button" class="btn sm ghost" data-histall style="margin-top:8px">Show all ${H.length}</button>`:""}`:`<div class="panel empty">No changes recorded yet. From now on, every change you make shows up here.</div>`}`}
+async function clUndo(id){const h=S.changelog[id];if(!h||h.undone)return;const ops=h.ops||[];
+  const strip=v=>{if(!v)return null;const c=Object.assign({},v);delete c.updatedAt;delete c.id;delete c.pub;return JSON.stringify(Object.keys(c).sort().reduce((a,k)=>(a[k]=c[k],a),{}))};
+  const changed=ops.filter(o=>{const cur=urBefore(o.col,o.id);return strip(cur)!==strip(o.after)});
+  const msg=`“${h.label||"Change"}” (${dLabel((h.at||"").slice(0,10))}) will be undone: ${ops.length} ${ops.length>1?"items go":"item goes"} back to how ${ops.length>1?"they were":"it was"} before.`+(changed.length?`\n\n⚠ ${changed.length} of them ${changed.length>1?"were":"was"} changed again afterwards. Undoing puts them back to before this change, so those later changes would be lost too.`:"");
+  if(!await confirmBox("Undo this change?",msg,changed.length?"Undo anyway":"Undo"))return;
+  urBusy=true;try{await urApply(ops,"undo");await db.collection("changelog").doc(id).update({undone:true,undoneAt:new Date().toISOString()});toast("Undone: "+(h.label||"change"))}catch(e){handleErr(e)}finally{urBusy=false}render()}
 function vMakeups(){
   const P=mkPending();
   const booked=arr("lessons").filter(l=>l.makeupFrom).sort((a,b)=>(b.date+(b.time||"")).localeCompare(a.date+(a.time||"")));
@@ -2929,7 +2996,8 @@ function infoItems(){const out=[],td=today();
   arr("lessons").forEach(l=>{const t=l.tRec||{};
     if(l.lessonNote&&l.noteSeen!==l.lessonNote&&!(needsAction(l)&&tst(l)==="other"))out.push({k:"note",id:l.id,d:l.date+(l.time||""),title:"Note from "+nm("teachers",payTeacher(l)),l,text:l.lessonNote});
     if((t.teacherLate||t.studentLate)&&!l.lateSeen)out.push({k:"late",id:l.id,d:l.date+(l.time||""),title:(t.teacherLate&&t.studentLate?"Teacher and student were late":t.teacherLate?nm("teachers",payTeacher(l))+" says they were late":"Student was late")+[t.teacherLate&&t.teacherLateMin?` · teacher ${t.teacherLateMin} min`:"",t.studentLate&&t.studentLateMin?` · student ${t.studentLateMin} min`:""].join(""),l});
-    if(t.prevStatus&&!t.changeSeen&&t.status!==t.prevStatus)out.push({k:"changed",id:l.id,d:l.date+(l.time||""),title:`${nm("teachers",payTeacher(l))} changed their mark: ${tLabel(t.prevStatus)} → ${tLabel(t.status)}`,l});});
+    if(t.prevStatus&&!t.changeSeen&&t.status!==t.prevStatus){const rev=!!(l.actHandled||l.resolvedSig||(l.status&&l.status!=="scheduled"));
+      out.push({k:"changed",rev,id:l.id,d:l.date+(l.time||""),title:rev?`${nm("teachers",payTeacher(l))} changed their mark after you decided: ${tLabel(t.prevStatus)} → ${tLabel(t.status)}`:`${nm("teachers",payTeacher(l))} changed their mark: ${tLabel(t.prevStatus)} → ${tLabel(t.status)}`,text:rev?`Your decision: ${stLabel(l.status)}.`+(t.status==="scheduled"?" The teacher removed their mark — the lesson is now unmarked on their side.":tMatches(t.status,l.status)?" Their new mark matches your decision.":" Their new mark is different from your decision — check if pay or fees need to change."):"",l})}});
   [["notes",arr("notes")],["lessons",arr("lessons").filter(l=>l.noteReplies&&l.noteReplies.length)]].forEach(([col,L])=>L.forEach(d=>{const R=d[socF(col).r]||[];const last=R[R.length-1];if(last&&last.by!=="office"&&d.replyOfficeSeen===false&&!(col==="notes"&&d.problem&&!d.resolved)&&!(col==="notes"&&!d.seen&&d.teacherId)&&!(col==="lessons"&&d.lessonNote&&d.noteSeen!==d.lessonNote))out.push({k:"reply",col,rid:d.id,id:col+"~"+d.id,l:col==="lessons"?d:null,d:(last.at||"").slice(0,10)+(last.at||"").slice(11,16),title:`${whoName(last.by)} replied${col==="notes"?" about "+nm("students",d.studentId):" about "+(d.homework&&!d.lessonNote?"homework":"a lesson note")}`})}));
   {const now=Date.now();arr("lessons").forEach(l=>{const pc=l.pubChange;if(!pc||!validDate(l.date)||freesRoom(l))return;const [y,m,d]=l.date.split("-").map(Number),st=toMin(l.time);const start=new Date(y,m-1,d,0,st==null?0:st).getTime();
     const soon=start-now<=24*3600e3,old=pc.at&&now-new Date(pc.at).getTime()>=24*3600e3;if(start<=now||!(soon||old))return;const why=soon?"The lesson starts within 24 hours — you may want to call them.":"Sent more than 24 hours ago — you may want to remind them.";(pc.tids||[]).forEach(tid=>{if((pc.seen||{})[tid]||(pc.alertSeen||{})[tid])return;const f=pc.from;
@@ -2945,9 +3013,11 @@ function infoItems(){const out=[],td=today();
   return out.sort((a,b)=>b.d.localeCompare(a.d));}
 function attnCount(){return actionList().length+infoItems().length+openProblems().length}
 function vReports(){
-  const A=actionList(), I=infoItems();
+  const A=actionList(), I0=infoItems(), RV=I0.filter(x=>x.rev), I=I0.filter(x=>!x.rev);
   return `<div class="head"><div><h1>Action required</h1><p class="sub">Lessons a teacher marked as something other than Done, plus notes, late arrivals, changed marks and closing duty. Everything stays here until you deal with it.</p></div></div>
-  <h2>Decide what happens <span class="chip ${A.length?"warn":"good"}">${A.length}</span></h2>
+  ${RV.length?`<h2>Changed after your decision <span class="chip bad">${RV.length}</span></h2><p class="muted" style="margin:-6px 0 8px;font-size:13px">A teacher changed their mark on a lesson you had already decided. Each change shows up here again.</p><div class="ar-list">${RV.map(x=>{const t=tst(x.l),ns=t==="scheduled"?"":(TMAP[t]||t);return `<article class="ar-card ar-rev"><div class="ar-top"><b>⚠ ${esc(x.title)}</b><span class="muted">· ${esc(dLabel(x.l.date))} ${esc(x.l.time||"")}</span><span class="ar-stu">${esc(nm("students",x.l.studentId))}</span></div><div class="ar-story">${esc(rvStory(x.l))}</div><div class="ar-note">${esc(x.text)}</div>
+    ${canWrite?`<div class="tools">${ns&&ns!==x.l.status?`<button type="button" class="btn sm pri" data-rvuse="${esc(x.id)}">↺ Undo my decision · mark ${esc(tLabel(t))}</button>`:""}<button type="button" class="btn sm" data-seen="changed|${esc(x.id)}">Keep my decision ✓</button><button type="button" class="btn sm ghost" data-act="${esc(x.id)}|open">Open lesson</button></div>`:""}</article>`}).join("")}</div>`:""}
+  <h2${RV.length?' style="margin-top:22px"':""}>Decide what happens <span class="chip ${A.length?"warn":"good"}">${A.length}</span></h2>
   ${A.length?`<div class="ar-list">${A.map(l=>{const t=tst(l);return `<article class="ar-card">
     <div class="ar-top"><span class="st ${esc(t==="excused"?"t-excused":(TMAP[t]||t))} tm-pill">${esc(tLabel(t))}</span><b>${esc(dLabel(l.date))} ${esc(l.time||"")}</b><span class="ar-stu">${esc(nm("students",l.studentId))}</span><span class="ar-tea">${esc(nm("teachers",payTeacher(l)))}</span>${l.status!=="scheduled"?`<span class="muted">· you: ${esc(stLabel(l.status))}</span>`:""}</div>
     ${l.lessonNote?`<div class="ar-note">“${esc(l.lessonNote)}”</div>`:""}
@@ -3074,8 +3144,8 @@ function vAccess(){
   const famMail=f=>f.kids.map(k=>k.parentEmail).find(Boolean)||"";const kids=L.filter(x=>effAge(x).v==="kid").sort(byName);
   const sec=(title,sub,rows)=>`<h2>${title}</h2><p class="muted" style="margin:-6px 0 8px;font-size:13px">${sub}</p><div class="tbl-wrap"><table class="acc-t"><thead><tr><th>Name</th><th>Email</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="3" class="muted">Nobody yet.</td></tr>`}</tbody></table></div>`;
   const A=arr("access");
-  return `<div class="head"><div><h1>Who sees what</h1><p class="sub">Type someone's email, then share the app with that same email from the <b>Share</b> menu. When they open it, they see only their own view.</p></div></div>
-  <div class="panel acc-how"><b>2 steps:</b> ① type their email below · ② tap <b>Copy invite</b> and send it to them. They sign in with that email and see their own page. To stop someone: clear their email.</div>
+  return `<div class="head"><div><h1>Who sees what</h1><p class="sub">Type someone's email, then send them the invite. When they sign in with that email, they see only their own page.</p></div></div>
+  <div class="panel acc-how"><b>2 steps:</b> ① type their email below · ② tap <b>Copy invite</b> and send it to them. They sign in with that email and see their own page. To stop someone: clear their email.</div>${canWrite?`<div class="acc-invall"><button type="button" class="btn sm pri" data-invall>📋 Copy invite for everyone</button><span class="muted">Same link for all — each person types the email you saved for them.</span></div>`:""}
   ${(()=>{const V=arr("visitors").filter(v=>!S.access[v.id]&&!accessByEmail(v.email));return V.length&&canWrite?`<div class="panel acc-wait"><h2 style="margin:0 0 4px">Waiting for access (${V.length})</h2><p class="muted" style="margin:0 0 8px;font-size:13px">These people opened the app but aren't connected yet. Choose who they are.</p><table class="acc-t"><tbody>${V.map(v=>`<tr><td><b>${esc(v.name||"(no name)")}</b><div class="muted" style="font-size:12px">${esc(v.email||"email not shared")} · ${esc(urAgo(Date.parse(v.at)||Date.now()))}</div></td><td><select class="inline-sel" data-vwho="${esc(v.id)}"><option value="">Connect as…</option><optgroup label="Teacher">${arr("teachers").sort(byName).map(t=>`<option value="teacher|${esc(t.id)}">${esc(t.name)}</option>`).join("")}</optgroup><optgroup label="Parent">${families().map(f=>`<option value="parent|${esc(f.k)}">Parent of ${esc(f.kids.map(k=>k.name).join(" & "))}</option>`).join("")}</optgroup><optgroup label="Student">${arr("students").filter(x=>x.status!=="left"&&!x.isGroup).sort(byName).map(x=>`<option value="student|${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup></select></td><td><button type="button" class="btn sm ghost" data-vdel="${esc(v.id)}">Ignore</button></td></tr>`).join("")}</tbody></table></div>`:""})()}
   <h2>Office staff</h2><p class="muted" style="margin:-6px 0 8px;font-size:13px">See the whole office app, like you. Leave empty if it's only you. Separate several emails with a comma.</p>
   <div class="panel" style="padding:10px 12px">${inp("o","staff",S.settings.staffEmails,"Office staff emails")}</div>
@@ -3096,12 +3166,15 @@ function wireAccess(main){
   main.querySelectorAll("[data-vwho]").forEach(sel=>sel.onchange=async()=>{if(!sel.value)return;const id=sel.dataset.vwho,[role,x]=sel.value.split("|");const d={role,by:"visitor",at:new Date().toISOString()};if(role==="teacher")d.teacherId=x;else if(role==="student")d.studentId=x;else d.fam=x;
     try{await db.collection("access").doc(id).set(d);await db.collection("visitors").doc(id).delete();toast("Connected. Ask them to reload the app.");loadAccProfiles().then(render)}catch(e){handleErr(e)}});
   main.querySelectorAll("[data-vdel]").forEach(b=>b.onclick=()=>del("visitors",b.dataset.vdel));
-  main.querySelectorAll("[data-inv]").forEach(b=>b.onclick=async()=>{const [role,who,em]=b.dataset.inv.split("|");const link=location.origin+location.pathname;
+  main.querySelectorAll("[data-inv]").forEach(b=>b.onclick=async()=>{const [role,who,em]=b.dataset.inv.split("|");const link=appLink();
     const what=role==="teacher"?"your lessons for the week, where you mark each lesson and add homework":role==="parent"?`${who}'s lessons, homework and fees`:"your lessons and homework";
     const txt=`Hello! Here is the Won Academy app, where you can see ${what}.\n\n1. Open this link: ${link}\n2. Type ${em} and tap "Send me a sign-in link". Open the email we send you on the same phone or computer. If the link opens inside the Gmail app, choose Open in Safari / Chrome.
 3. Tip: add the page to your home screen so it opens like an app.\n\nYou'll see your own page straight away.`;
     let ok=false;try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
     if(ok)toast("Invite copied. Paste it into an email or WhatsApp to "+em);else modal(`<h2 style="margin:0">Invite for ${esc(who)}</h2><textarea readonly rows="8" style="width:100%">${esc(txt)}</textarea><div class="ds-foot"><span style="flex:1"></span><button type="button" class="btn sm" data-close>Done</button></div>`).querySelector("textarea").select()});
+  main.querySelectorAll("[data-invall]").forEach(b=>b.onclick=async()=>{const txt=`Hello! Here is the Won Academy app, where you can see your lessons, homework and more.\n\n1. Open this link: ${appLink()}\n2. Type the email address you gave Won Academy and tap "Send me a sign-in link".\n3. Open the email on the same phone or computer and tap the link. If it opens inside the Gmail app, choose Open in Safari / Chrome.\n\nYou'll see your own page straight away. Tip: add it to your home screen so it opens like an app.`;
+    let ok=false;try{await navigator.clipboard.writeText(txt);ok=true}catch(e){}
+    if(ok)toast("Invite copied — paste it into WhatsApp or an email");else modal(`<h2 style="margin:0">Invite for everyone</h2><textarea readonly rows="9" style="width:100%">${esc(txt)}</textarea><div class="ds-foot"><span style="flex:1"></span><button type="button" class="btn sm" data-close>Done</button></div>`).querySelector("textarea").select()});
   main.querySelectorAll("[data-accdel]").forEach(b=>b.onclick=async()=>{if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="Tap again";return}await del("access",b.dataset.accdel)});
   const q=main.querySelector("#acc-q");if(!q)return;const hits=main.querySelector("#acc-hits"),role=main.querySelector("#acc-role"),rec=main.querySelector("#acc-rec");
   const fill=()=>{rec.innerHTML=opts(accRecOpts(role.value),"")};fill();role.onchange=fill;
@@ -3112,6 +3185,7 @@ function wireAccess(main){
     try{await db.collection("access").doc(accPick.id).set(d);toast(accPick.name+" added");accPick=null;loadAccProfiles().then(render)}catch(e){handleErr(e)}};
   main.querySelectorAll("[data-accdel]").forEach(b=>b.onclick=async()=>{if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="Tap again";return}await del("access",b.dataset.accdel)});}
 const mails=v=>String(v||"").toLowerCase().split(/[\s,;]+/).map(x=>x.trim()).filter(x=>x.includes("@"));
+function appLink(){return location.origin+location.pathname.replace(/index\.html$/,"")}
 function accessByEmail(email){const e=String(email||"").toLowerCase().trim();if(!e)return null;
   const t=arr("teachers").find(t=>mails(t.email).includes(e));if(t)return {role:"teacher",teacherId:t.id,via:"email"};
   const L=arr("students").filter(s=>s.status!=="left"&&!s.isGroup);
@@ -3728,7 +3802,7 @@ function render(){
   const examples=COLS.some(c=>arr(c).some(x=>x.example));
   const banner=examples&&canWrite?`<div class="banner"><span><b>Example data.</b> These students, teachers and lessons are samples so you can try the app. Remove them when you start entering real records.</span><button class="btn sm danger" id="rmex" type="button">Remove example data</button></div>`:"";
   const ro=!canWrite?`<div class="banner"><span>You have view-only access to this register.</span></div>`:"";
-  const fn={homework:vHomework,studentview:()=>vStudentView(),parentview:vParentView,teacherview:vTeacherView,timetable:vTimetable,teacherpay:vTeacherPay,classrooms:vClassrooms,students:vStudents,teachers:vTeachers,lessons:vLessons,reports:vReports,calendar:vCalendar,access:vAccess,offers:vOffers,makeups:vMakeups,payments:vPayments,report:vReport,materials:vMaterials,books:vBooks}[view]||vTimetable;
+  const fn={homework:vHomework,studentview:()=>vStudentView(),parentview:vParentView,teacherview:vTeacherView,timetable:vTimetable,teacherpay:vTeacherPay,classrooms:vClassrooms,students:vStudents,teachers:vTeachers,lessons:vLessons,reports:vReports,calendar:vCalendar,access:vAccess,offers:vOffers,makeups:vMakeups,moved:vMoved,history:vHistory,payments:vPayments,report:vReport,materials:vMaterials,books:vBooks}[view]||vTimetable;
   const ae=document.activeElement, focusId=ae&&main.contains(ae)&&ae.id, selStart=ae&&ae.selectionStart;
   const typing=focusId&&(ae.tagName==="TEXTAREA"||(ae.tagName==="INPUT"&&ae.type!=="checkbox"&&ae.type!=="file"))?ae.value:null;
   main.querySelectorAll("details[data-sec]").forEach(d=>{if(d.open)openSecs.add(d.dataset.sec);else openSecs.delete(d.dataset.sec)});
@@ -3809,10 +3883,20 @@ function wire(main){
   main.querySelectorAll("[data-ofacc]").forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent="Taking…";await acceptOffer(b.dataset.ofacc,tvTeacher)});
   main.querySelectorAll("[data-ofdec]").forEach(b=>b.onclick=async()=>{const o=S.offers[b.dataset.ofdec];if(!o)return;b.disabled=true;if(await patch("offers",o.id,{declined:Object.assign({},o.declined||{},{[tvTeacher]:true})}))toast("OK, thanks for letting us know")});
   main.querySelectorAll("[data-ofhide]").forEach(b=>b.onclick=async()=>{const o=S.offers[b.dataset.ofhide];if(!o)return;await patch("offers",o.id,{hidden:Object.assign({},o.hidden||{},{[tvTeacher]:true})})});
+  main.querySelectorAll("[data-rvuse]").forEach(b=>b.onclick=async()=>{const l=S.lessons[b.dataset.rvuse];if(!l)return;const t=tst(l),ns=TMAP[t]||t,lk=linkedOf(l);
+    const lkDone=lk&&(lk.l.status!=="scheduled"||tst(lk.l)!=="scheduled");
+    const eff=ns==="done"?"The lesson counts as Done for both: the student is charged for it and the teacher is paid.":`The lesson becomes “${stLabel(ns)}”.`;
+    const lkTxt=lk?(lkDone?`\n\nThe new lesson on ${dLabel(lk.l.date)} ${lk.l.time||""} has already been marked, so it stays. Check it yourself.`:`\n\nThe new lesson on ${dLabel(lk.l.date)} ${lk.l.time||""} that replaced it will be deleted.`):"";
+    if(!await confirmBox("Undo your decision?",`${rvStory(l)}\n\nYour decision “${stLabel(l.status)}” will be undone. ${eff}${lkTxt}`,"Undo my decision"))return;
+    if(lk&&!lkDone)await del("lessons",lk.l.id);
+    const upd={status:ns,actHandled:t,mkEnded:false,tRec:Object.assign({},l.tRec,{changeSeen:true})};if(lk&&!lkDone)upd[lk.k]="";upd.resolvedSig=recSig(Object.assign({},l,upd));
+    if(await patch("lessons",l.id,upd))toast("Decision undone — now "+stLabel(ns))});
   main.querySelectorAll("[data-seen]").forEach(b=>b.onclick=async()=>{const [k,id]=b.dataset.seen.split("|");b.disabled=true;const d=itemDesc(k,id);if(await markSeen(k,id)){logAct(Object.assign({kind:k,ref:id,action:"Seen"},d));toast("Marked as seen")}});
   main.querySelectorAll("[data-hreopen]").forEach(b=>b.onclick=async()=>{b.disabled=true;await reopenLog(b.dataset.hreopen)});
   main.querySelectorAll("[data-hedit]").forEach(b=>b.onclick=()=>editLesson(b.dataset.hedit));
   main.querySelectorAll("[data-arhist]").forEach(b=>b.onclick=()=>{arHistAll=true;render()});
+  main.querySelectorAll("[data-clundo]").forEach(b=>b.onclick=()=>clUndo(b.dataset.clundo));
+  main.querySelectorAll("[data-histall]").forEach(b=>b.onclick=()=>{histAll=true;render()});
   main.querySelectorAll(".ar-hist").forEach(d=>d.ontoggle=()=>{arHistOpen=d.open});
   main.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>{const [id,k]=b.dataset.act.split("|");b.disabled=!["resched","changed","open"].includes(k);doAct(id,k)});
   main.querySelectorAll("[data-tmchk]").forEach(b=>b.onclick=e=>{e.stopPropagation();const l=S.lessons[b.dataset.tmchk];if(l)openChecks(payTeacher(l),l.date,l.date,dLabel(l.date))});
@@ -3877,11 +3961,16 @@ function wire(main){
   main.querySelectorAll("[data-pnote]").forEach(b=>b.onclick=()=>editPayNote(b.dataset.pnote));
   main.querySelectorAll("[data-pwsel]").forEach(sel=>sel.onchange=async()=>{const [tid,ws]=sel.dataset.pwsel.split("|"),yes=sel.value==="yes";sel.disabled=true;let ok=true;
     for(const w of ws.split(",")){const id=payWeekId(tid,w),cur=S.payroll[id];
-      ok=(cur?await patch("payroll",id,{paid:yes,paidDate:yes?today():""}):await save("payroll",id,{kind:"week",teacherId:tid,week:w,days:{},paid:yes,paidDate:yes?today():"",note:""}))&&ok}
+      const amt=yes?Math.round(weekCalc(tid,w).wage):null;
+      ok=(cur?await patch("payroll",id,{paid:yes,paidDate:yes?today():"",paidAmount:amt}):await save("payroll",id,{kind:"week",teacherId:tid,week:w,days:{},paid:yes,paidDate:yes?today():"",paidAmount:amt,note:""}))&&ok}
     if(ok)toast(yes?"Marked paid":"Marked not paid yet");sel.disabled=false});
   main.querySelectorAll("[data-chk]").forEach(b=>b.onclick=()=>{const [tid,from,to,title]=b.dataset.chk.split("|");openChecks(tid,from,to,title)});
+  main.querySelectorAll("[data-pdiff]").forEach(b=>b.onclick=async()=>{const [id,now]=b.dataset.pdiff.split("|"),d=S.payroll[id];if(!d)return;const diff=Number(now)-Math.round(d.paidAmount||0);
+    if(!await confirmBox("Payment changed after paying",`You marked this paid with ${money(d.paidAmount)}. The lessons now add up to ${money(Number(now))} (${diff>0?"+":"−"}${money(Math.abs(diff))}).\n\nHave you settled the difference? Pressing “Settled” records ${money(Number(now))} as paid and removes the warning.`,"Settled"))return;
+    await patch("payroll",id,{paidAmount:Number(now),note:((d.note||"")+(d.note?" · ":"")+`Difference ${diff>0?"+":"−"}${money(Math.abs(diff))} settled ${dLabel(today())}`).trim()})});
   main.querySelectorAll("[data-pmsel]").forEach(sel=>sel.onchange=async()=>{const tid=sel.dataset.pmsel,yes=sel.value==="yes",id="m-"+tid+"-"+month.replace("-",""),cur=S.payroll[id];sel.disabled=true;
-    const ok=cur?await patch("payroll",id,{paid:yes,paidDate:yes?today():""}):await save("payroll",id,{kind:"month",teacherId:tid,month,note:"",paid:yes,paidDate:yes?today():""});
+    const amt=yes?Math.round(monthMondays(month).reduce((a,w)=>a+weekCalc(tid,w).wage,0)):null;
+    const ok=cur?await patch("payroll",id,{paid:yes,paidDate:yes?today():"",paidAmount:amt}):await save("payroll",id,{kind:"month",teacherId:tid,month,note:"",paid:yes,paidDate:yes?today():"",paidAmount:amt});
     if(ok)toast(yes?"Month marked paid":"Marked not paid yet");sel.disabled=false});
   main.querySelectorAll("[data-bill]").forEach(b=>b.onclick=()=>editBill(b.dataset.bill));
   main.querySelectorAll("[data-newbill]").forEach(b=>b.onclick=()=>editBill());

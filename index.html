@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<link rel="icon" type="image/png" href="icons/favicon-64.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="favicon-64.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1F65BF">
 <meta name="apple-mobile-web-app-title" content="Won Academy">
@@ -1112,6 +1112,10 @@ details.sh-t[open] summary{margin-bottom:6px}
 .hist-d>div{margin-bottom:2px}
 .hist-t tr.undone td{opacity:.55}
 .hist-t tr.undone td:last-child{opacity:1}
+.pamt-set{display:block;margin-top:4px;border:1px dashed var(--line);background:var(--surface);color:var(--muted);border-radius:6px;font:600 11.5px/1.3 inherit;padding:3px 6px;cursor:pointer}
+.pamt-set:hover{color:var(--ink,#16181d);border-style:solid}
+.tv-sec.req>summary{color:var(--bad,#b4441f)}
+.tv-sec.req{border-color:var(--bad,#b4441f)}
 </style>
 
 <div class="app">
@@ -1913,8 +1917,8 @@ function taxPct(t){return Number(t.tax)||0}
 function linkedOf(l){for(const k of ["rescheduledTo","makeupTo","changedTo"]){const x=l[k]&&S.lessons[l[k]];if(x)return {k,l:x}}return null}
 function rvStory(l){const t=l.tRec||{},tn=nm("teachers",payTeacher(l)),lk=linkedOf(l);
   return `${tn} marked “${tLabel(t.prevStatus)}” → you decided “${stLabel(l.status)}”${lk?` (new lesson ${dLabel(lk.l.date)} ${lk.l.time||""})`:""} → ${tn} changed it to “${tLabel(t.status)}”.`}
-function payDiffBtn(id,paidAmt,now){if(paidAmt==null||Math.round(now)===Math.round(paidAmt))return "";const d=Math.round(now)-Math.round(paidAmt);
-  return `<button type="button" class="pdiff" data-pdiff="${esc(id)}|${Math.round(now)}" title="Something changed after you marked this paid">⚠ Paid ${money(paidAmt)} · now ${money(now)} (${d>0?"+":"−"}${money(Math.abs(d))})</button>`}
+function payDiffBtn(id,paidAmt,now){if(paidAmt==null)return canWrite?`<button type="button" class="pamt-set" data-psetamt="${esc(id)}|${Math.round(now)}" title="Write down how much you actually paid, so changes later are spotted">+ Amount paid</button>`:"";if(Math.round(now)===Math.round(paidAmt))return "";const d=Math.round(now)-Math.round(paidAmt);
+  return `<button type="button" class="pdiff" data-pdiff="${esc(id)}|${Math.round(now)}" title="Something changed after you marked this paid">⚠ Lessons changed: now ${money(now)} (${d>0?"+":"−"}${money(Math.abs(d))})</button>`}
 function vTeacherPay(){
   const weeks=monthMondays(month);
   const teachers=arr("teachers").sort(teacherOrder);
@@ -1934,10 +1938,10 @@ function vTeacherPay(){
       if(!c.wage&&!(c.doc&&c.doc.paid&&c.doc.paidAmount))if(!c.doc)return `<td class="pw-empty${isPaid&&f==="month"?" pc yes":""}">${canWrite?`<button type="button" class="mini pw-add" data-pw="${esc(t.id)}|${w}" aria-label="Enter hours for ${esc(t.name)}, week ${shortRange(w)}">+</button>`:""}${f==="2weeks"?ctl:""}</td>`;
       const wh=f!=="week"?checksFor(t.id,w,addDays(w,6)).filter(x=>hardChk(x.c)).length:0;
       if(wh)ctl=`<button type="button" class="rc-btn" data-chk="${esc(t.id)}|${w}|${addDays(w,6)}|Week ${esc(shortRange(w))}">⚠ ${wh} mismatch${wh>1?"es":""}</button>`+ctl;
-      return `<td class="pc ${isPaid?"yes":"no"}"><div class="pw"><button type="button" class="pw-amt" data-pw="${esc(t.id)}|${w}" title="Open the days of this week"><b class="num">${money(c.wage)}</b></button>${f!=="month"&&isPaid&&c.doc?payDiffBtn(payWeekId(t.id,w),c.doc.paidAmount,c.wage):""}${ctl}
+      return `<td class="pc ${isPaid?"yes":"no"}"><div class="pw"><button type="button" class="pw-amt" data-pw="${esc(t.id)}|${w}" title="${isPaid&&c.doc&&c.doc.paidAmount!=null?"Amount you paid":"Open the days of this week"}"><b class="num">${money(f!=="month"&&isPaid&&c.doc&&c.doc.paidAmount!=null?c.doc.paidAmount:c.wage)}</b></button>${f!=="month"&&isPaid&&c.doc?payDiffBtn(payWeekId(t.id,w),c.doc.paidAmount,c.wage):""}${ctl}
         ${f==="week"&&isPaid&&c.doc.paidDate?`<small class="pd">${esc(dLabel(c.doc.paidDate))}</small>`:""}</div></td>`}).join("");
     const tax=Math.round(rowTot*tx/100), net=rowTot-tax;tot+=rowTot;taxT+=tax;
-    weeks.forEach((w,i)=>{const nw=Math.round(C[i].wage*(1-tx/100));if(wPaid(w,i))sent+=nw;else toSend+=nw});
+    weeks.forEach((w,i)=>{const pa=f!=="month"&&C[i].doc&&C[i].doc.paidAmount!=null?Number(C[i].doc.paidAmount):null;const nw=Math.round(C[i].wage*(1-tx/100));if(wPaid(w,i))sent+=pa!=null?Math.round(pa*(1-tx/100)):nw;else toSend+=nw});
     const monthCell=`<td class="num${f==="month"?" pc "+(md&&md.paid?"yes":"no"):""}"><b>${rowTot?money(rowTot):"–"}</b>${tx&&rowTot?`<div class="taxl">−${tx}% tax ${money(tax)}</div><div class="taxl net">Send ${money(net)}</div>`:""}${f==="month"&&rowTot?`<div style="margin-top:4px">${gate(t.id,weeks[0],addDays(weeks[weeks.length-1],6),monthLabel(month),!!(md&&md.paid),sel(`data-pmsel="${esc(t.id)}"`,!!(md&&md.paid),"Paid status for the month"))}</div>${md&&md.paid&&md.paidDate?`<small class="pd">${esc(dLabel(md.paidDate))}</small>`:""}${md&&md.paid?payDiffBtn("m-"+t.id+"-"+month.replace("-",""),md.paidAmount,rowTot):""}`:""}</td>`;
     const mh=checksFor(t.id,weeks[0],addDays(weeks[weeks.length-1],6)).filter(x=>hardChk(x.c)).length;
     return `<tr${mh?' class="tp-warn"':""}><td><b>${esc(t.name)}</b>${mh?` <button type="button" class="rc-tag" data-chk="${esc(t.id)}|${weeks[0]}|${addDays(weeks[weeks.length-1],6)}|${esc(monthLabel(month))}" title="Your mark and the teacher's don't match">⚠ ${mh} mismatch${mh>1?"es":""}</button>`:""}<div class="muted" style="font-size:12px">${esc(rateLabel(t))}${tx?` · ${tx}% tax withheld`:""}</div></td>${cells}${monthCell}<td class="pnote">${canWrite?`<button type="button" class="pn-btn" data-pnote="${esc(t.id)}">${md&&md.note?esc(md.note):'<span class="muted">Add note</span>'}</button>`:esc(md&&md.note||"")}</td></tr>`};
@@ -1947,7 +1951,7 @@ function vTeacherPay(){
   return `<div class="head"><div><h1>Teacher Payroll</h1><p class="sub">What each teacher earned, week by week, and what's been paid. Grey means paid. Worked out from lessons marked Done, No show – student or Changed teacher, unless you enter the hours yourself.</p></div>
   <div class="tools">${monthNav()}</div></div>
   ${(()=>{let n=0;teachers.forEach(t=>{const f=payFreq(t);if(f==="month"){const md=mnote(t.id);if(md&&md.paid&&md.paidAmount!=null&&Math.round(weeks.reduce((a,w)=>a+weekCalc(t.id,w).wage,0))!==Math.round(md.paidAmount))n++}else weeks.forEach(w=>{const c=weekCalc(t.id,w);if(c.doc&&c.doc.paid&&c.doc.paidAmount!=null&&Math.round(c.wage)!==Math.round(c.doc.paidAmount))n++})});
-    return n?`<div class="rc-banner pdiff-banner">⚠ ${n} payment${n>1?"s":""} changed after you marked ${n>1?"them":"it"} paid — what you paid and what the lessons add up to now are different. Look for the orange ⚠ Paid … · now … below.</div>`:""})()}
+    return n?`<div class="rc-banner pdiff-banner">⚠ ${n} payment${n>1?"s":""} changed after you marked ${n>1?"them":"it"} paid — what you paid and what the lessons add up to now are different. The big number is what you paid; the orange “⚠ Lessons changed” under it shows the new total.</div>`:""})()}
   ${(()=>{const n=teachers.reduce((a,t)=>a+checksFor(t.id,weeks[0],addDays(weeks[weeks.length-1],6)).filter(x=>hardChk(x.c)).length,0);return n?`<div class="rc-banner">⚠ ${n} lesson${n>1?"s":""} where your timetable and the teacher's record don't match. Pay is worked out from <b>your</b> marks; check the ⚠ ones if you want.</div>`:""})()}
   <div class="kpis"><div class="kpi"><span>Wages · ${esc(monthLabel(month).split(" ")[0])}</span><b>${money(tot)}</b></div><div class="kpi"><span>Sent</span><b style="color:var(--good)">${money(sent)}</b></div><div class="kpi"><span>Still to send</span><b style="color:var(--bad)">${money(toSend)}</b></div><div class="kpi"><span>Tax withheld</span><b>${money(taxT)}</b></div></div>
   ${teachers.length?body+`<p class="muted" style="font-size:13px">A week belongs to the month its Monday falls in. Set each teacher's rate, how often you pay them and tax under Teachers → click the teacher.</p>`:`<div class="panel empty">No teachers yet.</div>`}`;
@@ -1959,14 +1963,15 @@ function editPayWeek(tid,mon){
     fields.push({id:"m"+i,label:`${dn[i]} ${Number(x.d.slice(8))}.${Number(x.d.slice(5,7))}. minutes`,type:"number",min:0,ph:x.src==="lessons"?String(x.m):"0"});
     fields.push({id:"w"+i,label:`${dn[i]} wage`,type:"number",min:0,ph:x.src==="lessons"?String(x.w):"auto"});
     if(man){vals["m"+i]=man.minutes;vals["w"+i]=man.wage}});
-  fields.push({id:"paid",label:"Paid?",type:"select",options:[["no","Not yet"],["yes","Paid"]]},{id:"paidDate",label:"Payment date",type:"date"},{id:"note",label:"Note",full:true});
-  vals.paid=doc.paid?"yes":"no";vals.paidDate=doc.paidDate||"";vals.note=doc.note||"";
+  fields.push({id:"paid",label:"Paid?",type:"select",options:[["no","Not yet"],["yes","Paid"]]},{id:"paidDate",label:"Payment date",type:"date"},{id:"paidAmount",label:"Amount you paid (Kč)",type:"number",min:0,ph:String(Math.round(c.wage))},{id:"note",label:"Note",full:true});
+  vals.paid=doc.paid?"yes":"no";vals.paidDate=doc.paidDate||"";vals.paidAmount=doc.paidAmount!=null?doc.paidAmount:"";vals.note=doc.note||"";
   form({title:`${t?t.name:"Teacher"} · week ${shortRange(mon)}`,fields,values:vals,
     extra:`<p class="muted" style="margin:10px 0 0;font-size:13px">Empty days use the lessons in the timetable (shown in grey). Type minutes to enter a day yourself; the wage is worked out from the rate (${esc(rateLabel(t)||"no rate set")}) unless you type it.</p>`,
     onSave:x=>{const days={};
       c.days.forEach((d,i)=>{const m=x["m"+i],w=x["w"+i];if(m!=null||w!=null){const mm=Number(m)||0;days[d.d]={minutes:mm,wage:w!=null?Number(w):(t?(t.rate&&t.rateUnit==="lesson"?0:Math.round((Number(t.rate)||DEFAULT_RATE)*mm/60)):0)}}});
       const paidYes=x.paid==="yes";
-      return save("payroll",payWeekId(tid,mon),{kind:"week",teacherId:tid,week:mon,days,paid:paidYes,paidDate:paidYes?(x.paidDate||today()):"",note:x.note||""});
+      const pa=x.paidAmount!=null&&x.paidAmount!==""?Number(x.paidAmount):(paidYes?(doc.paidAmount!=null?doc.paidAmount:null):null);
+      return save("payroll",payWeekId(tid,mon),{kind:"week",teacherId:tid,week:mon,days,paid:paidYes,paidDate:paidYes?(x.paidDate||today()):"",paidAmount:paidYes?pa:null,note:x.note||""});
     }});
 }
 function editPayNote(tid){
@@ -2206,6 +2211,10 @@ function addOfficeNote(sid){
     extra:`<p class="muted" style="margin:10px 0 0;font-size:13px">Every teacher who teaches ${esc(nm("students",sid))} sees this note in <b>My students</b> and gets a notice on <b>My week</b>. They can reply and react.</p>`,
     onSave:x=>save("notes",null,{studentId:sid,lessonId:"",teacherId:"",by:"office",text:x.text,problem:false,resolved:false,seen:true,tSeen:{},at:new Date().toISOString()})});
 }
+function kidRate(l){const st=S.students[l.studentId]||{};return !st.isGroup&&effAge(st).v==="kid"}
+function needRate(l){if(!kidRate(l))return null;const miss=[];if(l.attitude==null||l.attitude==="")miss.push("In class today");
+  const prev=arr("lessons").filter(x=>x.studentId===l.studentId&&validDate(x.date)&&x.date<l.date&&!isOff(x)).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||""))).pop();
+  if(prev&&hasHomework(prev)&&(l.hwGrade==null||l.hwGrade===""))miss.push("Homework from last lesson");return miss.length?miss:null}
 function teacherLessonForm(lid){
   const l=S.lessons[lid];if(!l)return;
   const fields=[{id:"status",label:"What happened?",type:"select",options:STAT},
@@ -2286,7 +2295,7 @@ function vTeacherView(){
           <textarea rows="2" id="hw-${esc(l.id)}" data-tvhw="${esc(l.id)}" placeholder="Write the homework, add a photo, or both">${esc(l.homework||"")}</textarea>
           ${hwFilesHtml(l,true)}
           <label class="hw-add"><input type="file" class="vh" accept="image/*,application/pdf" multiple data-hwup="${esc(l.id)}"><span>+ Photo or file</span></label></div>
-        <details class="tv-sec" data-sec="r-${esc(l.id)}"${rated?" open":""}><summary>How did the student do? <em>optional</em></summary>
+        <details class="tv-sec${kidRate(l)&&needRate(l)&&tst(l)==="scheduled"?" req":""}" data-sec="r-${esc(l.id)}"${rated||kidRate(l)?" open":""}><summary>How did the student do? ${kidRate(l)?`<em>${needRate(l)?"needed before Done":"✓ rated"}</em>`:"<em>optional</em>"}</summary>
           ${ratingRow(l,"attitude",ATT,"In class today")}${ratingRow(l,"hwGrade",HWG,"Homework from last lesson")}</details>
         <details class="tv-sec" data-sec="n-${esc(l.id)}"${noted?" open":""}><summary>Notes and others <em>optional</em>${noted?" ·":""} ${tr.studentLate?"Student late ":""}${tr.teacherLate?"I was late ":""}${l.lessonNote?"Note":""}</summary>
           <div class="tv-checks"><label><input type="checkbox" data-tvflag="${esc(l.id)}|studentLate"${tr.studentLate?" checked":""}> Student was late</label>${tr.studentLate?`<span class="tv-lm">by <input type="number" inputmode="numeric" min="1" max="180" data-tvlm="${esc(l.id)}|studentLateMin" value="${esc(tr.studentLateMin||"")}" placeholder="?" aria-label="Minutes the student was late"> min</span>`:""}<label><input type="checkbox" data-tvflag="${esc(l.id)}|teacherLate"${tr.teacherLate?" checked":""}> I was late</label>${tr.teacherLate?`<span class="tv-lm">by <input type="number" inputmode="numeric" min="1" max="180" data-tvlm="${esc(l.id)}|teacherLateMin" value="${esc(tr.teacherLateMin||"")}" placeholder="?" aria-label="Minutes you were late"> min</span>`:""}</div>
@@ -2311,7 +2320,7 @@ function vTeacherView(){
     const weeks=monthMondays(month);let tot=0,paidTot=0;const f=payFreq(t),tx=taxPct(t);
     const docAmt=doc=>doc?(doc.paidAmount!=null?Number(doc.paidAmount):doc.days&&Object.keys(doc.days).length?Object.values(doc.days).reduce((a,x)=>a+(Number(x.wage)||0),0):null):null;
     const md=S.payroll["m-"+t.id+"-"+month.replace("-","")];
-    const paidCell=(doc,fallback)=>{if(doc&&doc.paid){const a=docAmt(doc)??fallback;if(a)paidTot+=a;return `<span class="rtag tv-paid">✓ Paid${a!=null?" "+money(a):""}${doc.paidDate?" · "+esc(dLabel(doc.paidDate)):""}</span>`}return fallback||docAmt(doc)?`<span class="rtag">Not yet</span>`:""};
+    const paidCell=(doc,fallback)=>{if(doc&&doc.paid){const a=docAmt(doc);if(a)paidTot+=a;return `<span class="rtag tv-paid">✓ Paid${a!=null?" "+money(a):""}${doc.paidDate?" · "+esc(dLabel(doc.paidDate)):""}</span>`}return fallback||docAmt(doc)?`<span class="rtag">Not yet</span>`:""};
     body=`<div class="tv-weeknav">${monthNav()}</div><div class="tbl-wrap"><table class="tv-hours"><thead><tr><th>Week</th><th class="num">Minutes</th><th class="num">Your Done lessons</th><th>Paid by Won Academy</th></tr></thead><tbody>
     ${weeks.map(w=>{const c=tvWeekCalc(t.id,w);tot+=c.wage;const pc=f==="month"?(c.wage?`<span class="muted" style="font-size:12.5px">paid monthly</span>`:""):paidCell(c.doc,c.wage);return `<tr><td>${esc(shortRange(w))}</td><td class="num">${c.mins||""}</td><td class="num">${c.wage?money(c.wage):""}</td><td>${pc}</td></tr>`}).join("")}
     ${f==="month"&&(md||tot)?`<tr><td><b>${esc(monthLabel(month))}</b></td><td></td><td></td><td>${paidCell(md,tot)}</td></tr>`:""}
@@ -2555,7 +2564,7 @@ function vMoved(){const L=arr("lessons").filter(l=>l.status==="nextmonth"&&valid
   return `<div class="head"><div><h1>Moved to next month</h1><p class="sub">Every lesson marked “Moved to next month”, grouped by the month it moves to. The student isn't charged for it in its own month. Change the status here to undo it.</p></div></div>
   ${L.length?keys.map(k=>{const G=groups[k],by={};G.forEach(l=>{by[l.studentId]=(by[l.studentId]||0)+1});return `<h2 style="margin-top:18px">Into ${esc(monthLabel(k))} <span class="chip">${G.length}</span></h2>
     <p class="muted" style="margin:-6px 0 8px;font-size:13px">${Object.entries(by).map(([sid,n])=>`${esc(nm("students",sid))} ${n}×`).join(" · ")}</p>
-    <div class="tbl-wrap"><table><thead><tr><th>Lesson</th><th>Student</th><th>Teacher</th><th>Note</th><th>Status</th></tr></thead><tbody>${G.map(l=>`<tr class="click" data-les="${esc(l.id)}"><td class="mono" style="white-space:nowrap">${esc(dLabel(l.date))} ${esc(l.time||"")}</td><td><b>${esc(nm("students",l.studentId))}</b></td><td>${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}${l.tRec&&tst(l)!=="scheduled"?`<div class="muted" style="font-size:12px">teacher marked: ${esc(tLabel(tst(l)))}</div>`:""}</td><td class="muted" style="font-size:13px">${esc(l.statusNote||"")}</td><td>${statusSel(l)}</td></tr>`).join("")}</tbody></table></div>`}).join(""):`<div class="panel empty">No lessons are moved to next month.</div>`}`}
+    <div class="tbl-wrap"><table><thead><tr><th>Lesson</th><th>Student</th><th>Teacher</th><th>Note</th><th>Status</th><th></th></tr></thead><tbody>${G.map(l=>`<tr class="click" data-les="${esc(l.id)}"><td class="mono" style="white-space:nowrap">${esc(dLabel(l.date))} ${esc(l.time||"")}</td><td><b>${esc(nm("students",l.studentId))}</b></td><td>${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}${l.tRec&&tst(l)!=="scheduled"?`<div class="muted" style="font-size:12px">teacher marked: ${esc(tLabel(tst(l)))}</div>`:""}</td><td class="muted" style="font-size:13px">${esc(l.statusNote||"")}</td><td>${statusSel(l)}</td><td>${canWrite?`<button type="button" class="btn sm ghost danger-t" data-mvdel="${esc(l.id)}">Delete</button>`:""}</td></tr>`).join("")}</tbody></table></div>`}).join(""):`<div class="panel empty">No lessons are moved to next month.</div>`}`}
 /* ---------- change history (persistent, with undo) ---------- */
 let histAll=false,clPruned=false;
 const CL_F=[["status","Status",v=>stLabel(v)],["date","Date",v=>v?dLabel(v):"—"],["time","Time",v=>v||"—"],["teacherId","Teacher",v=>v?nm("teachers",v):"—"],["subTeacherId","Sub teacher",v=>v?nm("teachers",v):"—"],["classroomId","Room",v=>{const r=S.classrooms[v];return r?roomLetter(r):"—"}],["studentId","Student",v=>v?nm("students",v):"—"],["duration","Length",v=>v?v+" min":"—"],["paid","Paid",v=>v?"Paid":"Not yet"],["paidAmount","Paid amount",v=>v==null?"—":money(v)],["fee","Fee",v=>v==null||v===""?"—":money(v)],["name","Name",v=>v||"—"],["email","Email",v=>v||"—"],["parentEmail","Parent email",v=>v||"—"],["rate","Rate",v=>v==null||v===""?"—":v]];
@@ -2928,7 +2937,7 @@ const TEACHER_GUIDE=`<article class="tv-guide">
 <p>Under the week table, <b>To confirm</b> lists today's lessons and any you haven't marked yet. Each lesson has a card. Go from top to bottom:</p>
 <ol class="tg-steps">
 <li><b>Homework.</b> Write it, and/or tap <b>+ Photo or file</b> to add a picture or PDF of the page. Students and parents see it straight away, so write it clearly.<br><span class="tg-small">For kids, homework is required — <b>Done</b> only works after you add it. If an adult doesn't want homework, tap <b>No homework for this student</b> once; it applies to all their lessons.</span></li>
-<li><b>How did the student do?</b> <em>(optional)</em> Rate <i>In class today</i> and <i>Homework from last lesson</i>. Students and parents see these.</li>
+<li><b>How did the student do?</b> Rate <i>In class today</i> and <i>Homework from last lesson</i>. Students and parents see these.<br><span class="tg-small">For <b>kids</b> this is required — <b>Done</b> only works after you rate. For adults it's optional.</span></li>
 <li><b>Notes and others.</b>
   <ul><li>Tick <b>Student was late</b> or <b>I was late</b> if it happened, then <b>type how many minutes</b> in the box that appears.</li>
   <li>Write a note for the office and the student's other teachers if there's anything to know.</li></ul></li>
@@ -3016,7 +3025,7 @@ function vReports(){
   const A=actionList(), I0=infoItems(), RV=I0.filter(x=>x.rev), I=I0.filter(x=>!x.rev);
   return `<div class="head"><div><h1>Action required</h1><p class="sub">Lessons a teacher marked as something other than Done, plus notes, late arrivals, changed marks and closing duty. Everything stays here until you deal with it.</p></div></div>
   ${RV.length?`<h2>Changed after your decision <span class="chip bad">${RV.length}</span></h2><p class="muted" style="margin:-6px 0 8px;font-size:13px">A teacher changed their mark on a lesson you had already decided. Each change shows up here again.</p><div class="ar-list">${RV.map(x=>{const t=tst(x.l),ns=t==="scheduled"?"":(TMAP[t]||t);return `<article class="ar-card ar-rev"><div class="ar-top"><b>⚠ ${esc(x.title)}</b><span class="muted">· ${esc(dLabel(x.l.date))} ${esc(x.l.time||"")}</span><span class="ar-stu">${esc(nm("students",x.l.studentId))}</span></div><div class="ar-story">${esc(rvStory(x.l))}</div><div class="ar-note">${esc(x.text)}</div>
-    ${canWrite?`<div class="tools">${ns&&ns!==x.l.status?`<button type="button" class="btn sm pri" data-rvuse="${esc(x.id)}">↺ Undo my decision · mark ${esc(tLabel(t))}</button>`:""}<button type="button" class="btn sm" data-seen="changed|${esc(x.id)}">Keep my decision ✓</button><button type="button" class="btn sm ghost" data-act="${esc(x.id)}|open">Open lesson</button></div>`:""}</article>`}).join("")}</div>`:""}
+    ${canWrite?`<div class="tools">${ns&&ns!==x.l.status?`<button type="button" class="btn sm pri" data-rvuse="${esc(x.id)}">↺ Undo my decision · mark ${esc(tLabel(t))}</button>`:""}<button type="button" class="btn sm" data-seen="changed|${esc(x.id)}">Keep my decision ✓</button><button type="button" class="btn sm ghost" data-act="${esc(x.id)}|open">Open lesson</button><button type="button" class="btn sm ghost" data-seen="changed|${esc(x.id)}" title="Remove this notice without changing anything">Dismiss</button></div>`:""}</article>`}).join("")}</div>`:""}
   <h2${RV.length?' style="margin-top:22px"':""}>Decide what happens <span class="chip ${A.length?"warn":"good"}">${A.length}</span></h2>
   ${A.length?`<div class="ar-list">${A.map(l=>{const t=tst(l);return `<article class="ar-card">
     <div class="ar-top"><span class="st ${esc(t==="excused"?"t-excused":(TMAP[t]||t))} tm-pill">${esc(tLabel(t))}</span><b>${esc(dLabel(l.date))} ${esc(l.time||"")}</b><span class="ar-stu">${esc(nm("students",l.studentId))}</span><span class="ar-tea">${esc(nm("teachers",payTeacher(l)))}</span>${l.status!=="scheduled"?`<span class="muted">· you: ${esc(stLabel(l.status))}</span>`:""}</div>
@@ -3895,6 +3904,9 @@ function wire(main){
   main.querySelectorAll("[data-hreopen]").forEach(b=>b.onclick=async()=>{b.disabled=true;await reopenLog(b.dataset.hreopen)});
   main.querySelectorAll("[data-hedit]").forEach(b=>b.onclick=()=>editLesson(b.dataset.hedit));
   main.querySelectorAll("[data-arhist]").forEach(b=>b.onclick=()=>{arHistAll=true;render()});
+  main.querySelectorAll("[data-mvdel]").forEach(b=>b.onclick=async e=>{e.stopPropagation();const l=S.lessons[b.dataset.mvdel];if(!l)return;
+    if(!await confirmBox("Delete this lesson?",`${nm("students",l.studentId)} · ${dLabel(l.date)} ${l.time||""} with ${nm("teachers",l.teacherId)} will be removed completely. You can bring it back from Change history.`,"Delete"))return;
+    if(await del("lessons",l.id))toast("Lesson deleted")});
   main.querySelectorAll("[data-clundo]").forEach(b=>b.onclick=()=>clUndo(b.dataset.clundo));
   main.querySelectorAll("[data-histall]").forEach(b=>b.onclick=()=>{histAll=true;render()});
   main.querySelectorAll(".ar-hist").forEach(d=>d.ontoggle=()=>{arHistOpen=d.open});
@@ -3936,6 +3948,7 @@ function wire(main){
     await saveCard(id);
     if(st==="other"&&cur&&tst(cur)!=="other"&&!(cur.lessonNote||"").trim()){toast("Write what happened in the note first.");const d=main.querySelector(`[data-sec="n-${CSS.escape(id)}"]`);if(d){d.open=true;openSecs.add("n-"+id)}const ta=main.querySelector("#ln-"+CSS.escape(id));if(ta)ta.focus();return}
     if(st==="done"&&cur&&tst(cur)!=="done"&&!hasHomework(cur)&&!noHw(cur)){toast("Add the homework first: write it or add a photo.");const ta=main.querySelector("#hw-"+CSS.escape(id));if(ta){ta.focus();ta.closest(".tv-hw").classList.add("req","shake");setTimeout(()=>ta.closest(".tv-hw")&&ta.closest(".tv-hw").classList.remove("shake"),600)}return}
+    {const nr=st==="done"&&cur&&tst(cur)!=="done"&&needRate(cur);if(nr){toast("Please rate first: "+nr.join(" and "));const sec=main.querySelector('[data-sec="r-'+CSS.escape(id)+'"]');if(sec){sec.open=true;sec.classList.add("req","shake");sec.scrollIntoView({block:"center",behavior:"smooth"});setTimeout(()=>sec.classList.remove("shake"),600)}return}}
     const v=cur&&tst(cur)===st?"scheduled":st;tvEditing.delete(id);const prev=tst(cur);const chg=prev!=="scheduled"&&v!==prev?{prevStatus:prev,changeSeen:false}:{};if(await patch("lessons",id,{tRec:Object.assign({},cur.tRec||{},{status:v,by:tvTeacher||"",at:new Date().toISOString()},chg)}))toast(v==="scheduled"?"Back to Scheduled":"Marked: "+tLabel(v))});
   main.querySelectorAll("[data-hwup]").forEach(inp=>inp.onchange=()=>{const files=[...inp.files];inp.value="";if(files.length)uploadHomework(inp.dataset.hwup,files)});
   main.querySelectorAll("[data-hwdel]").forEach(b=>b.onclick=e=>{e.preventDefault();const [lid,fid]=b.dataset.hwdel.split("|");if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="?";b.title="Tap again to remove";return}removeHomework(lid,fid)});
@@ -3968,6 +3981,9 @@ function wire(main){
   main.querySelectorAll("[data-pdiff]").forEach(b=>b.onclick=async()=>{const [id,now]=b.dataset.pdiff.split("|"),d=S.payroll[id];if(!d)return;const diff=Number(now)-Math.round(d.paidAmount||0);
     if(!await confirmBox("Payment changed after paying",`You marked this paid with ${money(d.paidAmount)}. The lessons now add up to ${money(Number(now))} (${diff>0?"+":"−"}${money(Math.abs(diff))}).\n\nHave you settled the difference? Pressing “Settled” records ${money(Number(now))} as paid and removes the warning.`,"Settled"))return;
     await patch("payroll",id,{paidAmount:Number(now),note:((d.note||"")+(d.note?" · ":"")+`Difference ${diff>0?"+":"−"}${money(Math.abs(diff))} settled ${dLabel(today())}`).trim()})});
+  main.querySelectorAll("[data-psetamt]").forEach(b=>b.onclick=()=>{const [id,now]=b.dataset.psetamt.split("|"),d=S.payroll[id];if(!d)return;
+    form({title:"Amount you paid",fields:[{id:"amt",label:"Amount paid (Kč)",type:"number",min:0,required:true,ph:now}],values:{amt:now},extra:`<p class="muted" style="margin:10px 0 0;font-size:13px">Type what you actually sent${d.paidDate?" on "+esc(dLabel(d.paidDate)):""}. The lessons add up to ${money(Number(now))} right now. If they change later, you'll see the difference.</p>`,
+      onSave:x=>patch("payroll",id,{paidAmount:Number(x.amt)||0})})});
   main.querySelectorAll("[data-pmsel]").forEach(sel=>sel.onchange=async()=>{const tid=sel.dataset.pmsel,yes=sel.value==="yes",id="m-"+tid+"-"+month.replace("-",""),cur=S.payroll[id];sel.disabled=true;
     const amt=yes?Math.round(monthMondays(month).reduce((a,w)=>a+weekCalc(tid,w).wage,0)):null;
     const ok=cur?await patch("payroll",id,{paid:yes,paidDate:yes?today():"",paidAmount:amt}):await save("payroll",id,{kind:"month",teacherId:tid,month,note:"",paid:yes,paidDate:yes?today():"",paidAmount:amt});

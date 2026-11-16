@@ -40,6 +40,7 @@
     let sentTo = "";
     f.onsubmit = async (e) => {
       e.preventDefault(); const email = f.querySelector("input[type=email]").value.trim().toLowerCase(); if (!email) return;
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) { msg.className = "msg err"; msg.textContent = "Please check your email address — it looks incomplete (for example, …@gmail.com)."; return; }
       btn.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
       btn.disabled = false;

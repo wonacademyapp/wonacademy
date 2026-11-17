@@ -237,6 +237,8 @@ th.num{text-align:right;font-family:var(--f-body)}
 .tv-preview{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;font-size:13.5px}
 .tv-who{display:flex;gap:6px;align-items:center;font-weight:600}
 .tv-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.lang-sw{display:inline-flex;border:1px solid var(--line,#d9dee8);border-radius:999px;overflow:hidden;font-size:12.5px;order:-1;margin-left:auto}.tv-head h1{order:-2}
+.lang-sw button{border:0;background:none;padding:4px 10px;font:inherit;color:inherit;cursor:pointer}.lang-sw button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:600}
 .tv-weeknav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .tv-todo{background:var(--warn-soft);color:var(--fg);border:1px solid var(--warn);border-radius:var(--r);padding:9px 12px;margin-bottom:12px;font-size:13.5px}
 .tv-day{margin-bottom:18px}
@@ -1515,6 +1517,8 @@ function editStudent(id){
     {id:"phone",label:"Phone",type:"tel"},
     {id:"email",label:"Student's own email (gives the student view)",type:"text",ph:"name@example.com"},
     {id:"parentEmail",label:"Parent's email (gives the parent view · two parents: separate with a comma)",type:"text",ph:"mum@example.com, dad@example.com"},
+    {id:"lang",label:"App language · student",type:"select",options:[["","English"],["ko","한국어 (Korean)"],["cs","Čeština (Czech)"]]},
+    {id:"parentLang",label:"App language · parents",type:"select",options:[["","Same as student"],["ko","한국어 (Korean)"],["cs","Čeština (Czech)"],["en","English"]]},
     {id:"groupId",label:"Group",type:"select",options:arr("students").filter(x=>x.isGroup&&x.id!==id).sort(byName).map(x=>[x.id,x.name]),blank:"— not in a group —"},
     {id:"isGroup",label:"This record is a group course",type:"select",options:[["","No"],["yes","Yes"]]},
     {id:"groupFee",label:"Group course fee per month ("+S.settings.currency+")",type:"number",min:0,ph:"Only for a group course"},
@@ -1547,7 +1551,7 @@ function editTeacher(id){
   const v=id?S.teachers[id]:{};
   const fields=[{id:"name",label:"Full name",required:true},{id:"languages",label:"Teaches",ph:"English, Korean"},
     {id:"phone",label:"Phone",type:"tel"},{id:"email",label:"Email",type:"email"},
-    {id:"order",label:"Position in the teacher schedule",type:"number",min:1,ph:"1 = top"},{id:"rate",label:"Pay rate ("+S.settings.currency+")",type:"number",min:0},{id:"rateUnit",label:"Rate is",type:"select",options:[["hour","per hour"],["lesson","per lesson"]]},{id:"payFreq",label:"I pay them",type:"select",options:PAYF},{id:"noPay",label:"Teacher payroll",type:"select",options:[["","Included (paid for lessons)"],["yes","Not paid"]]},{id:"tax",label:"Withhold tax (%)",type:"number",min:0,max:100,ph:"e.g. 15"},{id:"korean",label:"Korean teacher (not asked to close the school)",type:"select",options:[["","No"],["yes","Yes"]]},{id:"availability",label:"Availability",ph:"Mon–Thu afternoons"},
+    {id:"order",label:"Position in the teacher schedule",type:"number",min:1,ph:"1 = top"},{id:"rate",label:"Pay rate ("+S.settings.currency+")",type:"number",min:0},{id:"rateUnit",label:"Rate is",type:"select",options:[["hour","per hour"],["lesson","per lesson"]]},{id:"payFreq",label:"I pay them",type:"select",options:PAYF},{id:"noPay",label:"Teacher payroll",type:"select",options:[["","Included (paid for lessons)"],["yes","Not paid"]]},{id:"tax",label:"Withhold tax (%)",type:"number",min:0,max:100,ph:"e.g. 15"},{id:"korean",label:"Korean teacher (not asked to close the school)",type:"select",options:[["","No"],["yes","Yes"]]},{id:"lang",label:"App language for this teacher",type:"select",options:[["","English"],["ko","한국어 (Korean)"],["cs","Čeština (Czech)"]]},{id:"availability",label:"Availability",ph:"Mon–Thu afternoons"},
     {id:"notes",label:"Notes",type:"textarea",full:true}];
   const extra=`<div class="spr"><div class="spr-h"><b>Special rates</b><span class="muted">For a class or language paid differently from the normal rate (e.g. a pair lesson = 400 Kč per lesson). A class rate wins over a language rate.</span></div><div id="spr-list">${(v.specialRates||[]).map(spRowHtml).join("")}</div><button type="button" class="btn sm" id="spr-add">+ Add special rate</button></div>`;
   const m=form({title:id?"Edit teacher":"New teacher",fields,values:Object.assign({},v,{noPay:v.noPay?"yes":""}),extra,onSave:(x,mm)=>save("teachers",id,Object.assign({},id?stripMeta(S.teachers[id]):{},x,{noPay:x.noPay==="yes",specialRates:readSpRows(mm)})),onDelete:id?()=>del("teachers",id):null});wireSpRows(m);
@@ -1746,7 +1750,7 @@ function openStudent(sid){
     ${(()=>{const bl=arr("billing").filter(b=>b.studentId===sid).sort((a,b)=>b.month.localeCompare(a.month));return bl.length?`<div><h2>Monthly fees</h2><div class="tbl-wrap"><table class="paytbl"><thead><tr><th>Month</th><th class="num">Lesson fee</th><th class="num">Books</th><th>Note</th></tr></thead><tbody>${bl.map(b=>`<tr><td>${esc(monthLabel(b.month))}</td>${payCell(b,"paid",b.amount)}${payCell(b,"booksPaid",b.books)}<td class="pnote">${esc(b.note||"")}</td></tr>`).join("")}</tbody></table></div></div>`:""})()}
     ${(()=>{const fd=studentFeed(sid);return fd.length?`<div><h2>Homework and notes</h2>${fd.slice(0,12).map(x=>x.html).join("")}${fd.length>12?`<p class="muted" style="font-size:13px">Showing the latest 12 of ${fd.length}.</p>`:""}</div>`:""})()}
     <div><h2>Prepaid lesson packages</h2>${pays.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th class="num">Lessons</th><th class="num">Amount</th><th>Method</th><th>Note</th></tr></thead><tbody>${pays.map(p=>`<tr class="click" data-pay="${esc(p.id)}"><td>${dLabel(p.date)}</td><td class="num">${p.lessons||0}</td><td class="num">${money(p.amount)}</td><td>${esc(methodL(p.method))}</td><td class="muted">${esc(p.note)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="empty">No payments recorded yet.</p>`}</div>
-    <div><h2>Lessons</h2>${les.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Teacher</th><th>Topic</th><th>Homework</th><th>Rating</th><th>Status</th></tr></thead><tbody>${les.map(l=>`<tr class="click" data-les="${esc(l.id)}"><td class="mono" style="white-space:nowrap">${dLabel(l.date)} ${esc(l.time||"")}</td><td>${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}</td><td>${esc(l.topic)}${l.lessonNote?`<div class="muted" style="font-size:12.5px">Note: ${esc(l.lessonNote)}</div>`:""}</td><td class="muted">${esc(l.homework)}${hwFilesHtml(l,false)}</td><td>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</td><td>${statusSel(l)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="empty">No lessons yet.</p>`}</div>
+    <div><h2>Lessons</h2>${les.length?`<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Teacher</th><th>Topic</th><th>Homework</th><th>Rating</th><th>Status</th></tr></thead><tbody>${les.map(l=>`<tr class="click" data-les="${esc(l.id)}"><td class="mono" style="white-space:nowrap">${dLabel(l.date)} ${esc(l.time||"")}</td><td>${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}</td><td><span data-noi18n>${esc(l.topic)}</span>${l.lessonNote?`<div class="muted" style="font-size:12.5px">Note: <span data-noi18n>${esc(l.lessonNote)}</span></div>`:""}</td><td class="muted"><span data-noi18n>${esc(l.homework)}</span>${hwFilesHtml(l,false)}</td><td>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</td><td>${statusSel(l)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="empty">No lessons yet.</p>`}</div>
     ${usedMaterials.size?`<div><h2>Materials used</h2><div class="tags">${[...usedMaterials].map(x=>`<span class="chip">${esc(nm("materials",x))}</span>`).join("")}</div></div>`:""}
   `,true);
   const q=s=>m.querySelector(s);
@@ -1790,7 +1794,7 @@ function wireRows(root,after){
 /* ---------- views ---------- */
 function monthNav(){return `<div class="month"><button class="btn sm" data-m="-1" type="button" aria-label="Previous month">‹</button><span>${monthLabel(month)}</span><button class="btn sm" data-m="1" type="button" aria-label="Next month">›</button></div>`}
 function lessonLine(l){
-  return `<div class="li"><span class="t">${esc(l.time||"")}</span><div class="m"><b><a href="javascript:void 0" data-stu="${esc(l.studentId)}">${esc(nm("students",l.studentId))}</a></b> <span class="muted">· ${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}${l.duration?" · "+l.duration+" min":""}${S.classrooms[l.classroomId]?" · "+esc(S.classrooms[l.classroomId].name):""}</span>${l.topic?`<div class="muted" style="font-size:13px">${esc(l.topic)}</div>`:""}</div>${statusSel(l)}${canWrite?`<button class="btn sm ghost" data-les="${esc(l.id)}" type="button">Edit</button>`:""}</div>`;
+  return `<div class="li"><span class="t">${esc(l.time||"")}</span><div class="m"><b><a href="javascript:void 0" data-stu="${esc(l.studentId)}">${esc(nm("students",l.studentId))}</a></b> <span class="muted">· ${tDot(l.teacherId)} ${esc(nm("teachers",l.teacherId))}${l.duration?" · "+l.duration+" min":""}${S.classrooms[l.classroomId]?" · "+esc(S.classrooms[l.classroomId].name):""}</span>${l.topic?`<div class="muted" style="font-size:13px"><span data-noi18n>${esc(l.topic)}</span></div>`:""}</div>${statusSel(l)}${canWrite?`<button class="btn sm ghost" data-les="${esc(l.id)}" type="button">Edit</button>`:""}</div>`;
 }
 function vDashboard(){
   const t=today(), cm=ym(new Date());
@@ -2337,7 +2341,7 @@ function prevTeachersSection(s){const sid=s.id,td=today();
   return `<div><h2>Previous teachers · ${ids.length}</h2><p class="muted" style="font-size:13px;margin:-4px 0 8px">Every teacher who has taught ${esc(s.name)}. Click a teacher to see the lessons, then a lesson to see its homework and notes.</p><div class="pt-list">${ids.map(t=>{const ls=by[t].sort((a,b)=>(b.date+(b.time||"")).localeCompare(a.date+(a.time||"")));const first=ls[ls.length-1].date,last=ls[0].date;
     return `<details class="pt-t"><summary>${tDot(t)}<b>${esc(nm("teachers",t))}</b><span class="muted">${ls.length} lesson${ls.length>1?"s":""} · ${esc(dLabel(first))}${first!==last?" – "+esc(dLabel(last)):""}</span></summary><div class="pt-ls">${ls.map(l=>{const N=arr("notes").filter(n=>n.lessonId===l.id).sort((a,b)=>(a.at||"").localeCompare(b.at||""));const hw=hasHomework(l);
       return `<details class="pt-l"><summary><span class="mono">${esc(dLabel(l.date))} ${esc(l.time||"")}</span><span class="st ${esc(l.status)}">${esc(stLabel(l.status))}</span>${l.studentId!==sid?`<span class="chip">${esc(nm("students",l.studentId))}</span>`:""}<span class="pt-ic">${hw?'<span title="Homework">📝</span>':""}${l.lessonNote||N.length?`<span title="Notes">💬${N.length>1?N.length:""}</span>`:""}</span></summary>
-        <div class="pt-d">${l.topic?`<div><span class="feed-lbl">Topic</span> ${esc(l.topic)}</div>`:""}${hw?`<div class="feed-hw"><span class="feed-lbl">Homework</span>${l.homework?`<div class="tv-nt">${esc(l.homework)}</div>`:""}${hwFilesHtml(l,false)}</div>`:""}${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> ${esc(l.lessonNote)}</div>`:""}${l.attitude||l.hwGrade?`<div>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</div>`:""}${l.statusNote?`<div class="muted">${esc(l.statusNote)}</div>`:""}
+        <div class="pt-d">${l.topic?`<div><span class="feed-lbl">Topic</span> <span data-noi18n>${esc(l.topic)}</span></div>`:""}${hw?`<div class="feed-hw"><span class="feed-lbl">Homework</span>${l.homework?`<div class="tv-nt"><span data-noi18n>${esc(l.homework)}</span></div>`:""}${hwFilesHtml(l,false)}</div>`:""}${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> <span data-noi18n>${esc(l.lessonNote)}</span></div>`:""}${l.attitude||l.hwGrade?`<div>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</div>`:""}${l.statusNote?`<div class="muted">${esc(l.statusNote)}</div>`:""}
         ${hw||l.lessonNote?noteSocial("lessons",l):""}${N.map(noteHtml).join("")}${!hw&&!l.lessonNote&&!N.length&&!l.topic?`<div class="muted">No homework or notes for this lesson.</div>`:""}${canWrite?`<div><button type="button" class="btn sm" data-ptles="${esc(l.id)}">Open lesson</button></div>`:""}</div></details>`}).join("")}</div></details>`}).join("")}</div></div>`}
 function studentTeachers(sid){const s=S.students[sid]||{}, ids=[];if(s.teacherId&&S.teachers[s.teacherId])ids.push(s.teacherId);
   arr("lessons").filter(l=>l.studentId===sid||(s.groupId&&l.studentId===s.groupId)).sort((a,b)=>(b.date||"").localeCompare(a.date||"")).forEach(l=>{[l.teacherId,l.status==="changed"?l.subTeacherId:""].forEach(t=>{if(t&&S.teachers[t]&&!ids.includes(t))ids.push(t)})});return ids}
@@ -2356,11 +2360,11 @@ function meWho(){return myTid()||"office"}
 function whoName(w){return w==="office"?"Won Academy":nm("teachers",w)}
 function socF(col){return col==="lessons"?{r:"noteReplies",x:"noteReacts"}:{r:"replies",x:"reactions"}}
 function noteSocial(col,doc){if(!doc)return "";const f=socF(col),R=doc[f.r]||[],X=doc[f.x]||{},me=meWho(),k=`${col}|${esc(doc.id)}`;
-  return `<div class="ns">${R.length?`<div class="ns-replies">${R.map((r,i)=>`<div class="ns-r${r.by==="office"?" off":""}"><b>${esc(whoName(r.by))}</b> <span class="muted">${esc(noteTime({at:r.at}))}</span>${canWrite&&(r.by===me||!lock)?` <button type="button" class="ns-x" data-nrdel="${k}|${i}" aria-label="Delete reply">✕</button>`:""}<div>${esc(r.text)}</div></div>`).join("")}</div>`:""}
+  return `<div class="ns">${R.length?`<div class="ns-replies">${R.map((r,i)=>`<div class="ns-r${r.by==="office"?" off":""}"><b>${esc(whoName(r.by))}</b> <span class="muted">${esc(noteTime({at:r.at}))}</span>${canWrite&&(r.by===me||!lock)?` <button type="button" class="ns-x" data-nrdel="${k}|${i}" aria-label="Delete reply">✕</button>`:""}<div><span data-noi18n>${esc(r.text)}</span></div></div>`).join("")}</div>`:""}
   ${canWrite?`<div class="ns-bar">${REACTS.map(e=>{const who=X[e]||[];return `<button type="button" class="ns-e${who.includes(me)?" on":""}" data-nreact="${k}|${e}" title="${esc(who.map(whoName).join(", "))}">${e}${who.length?` <span>${who.length}</span>`:""}</button>`}).join("")}<button type="button" class="ns-rep" data-nreply="${k}">Reply</button></div>`:(Object.keys(X).some(e=>(X[e]||[]).length)?`<div class="ns-bar">${REACTS.filter(e=>(X[e]||[]).length).map(e=>`<span class="ns-e">${e} ${X[e].length}</span>`).join("")}</div>`:"")}</div>`}
 async function socReact(col,id,e){const d=S[col][id];if(!d)return;const f=socF(col),X=JSON.parse(JSON.stringify(d[f.x]||{})),me=meWho();X[e]=X[e]||[];X[e]=X[e].includes(me)?X[e].filter(x=>x!==me):X[e].concat(me);if(!X[e].length)delete X[e];await patch(col,id,{[f.x]:X})}
 function socReply(col,id){const d=S[col][id];if(!d)return;const f=socF(col);
-  form({title:"Reply",fields:[{id:"text",label:"Your reply",type:"textarea",full:true,required:true}],extra:`<div class="ar-note" style="margin-top:8px">${col==="lessons"?[d.homework?"<b>Homework:</b> "+esc(d.homework):"",d.lessonNote?"<b>Note:</b> "+esc(d.lessonNote):""].filter(Boolean).join("<br>")||"Lesson "+esc(dLabel(d.date)):"“"+esc(d.text||"")+"”"}</div>`,
+  form({title:"Reply",fields:[{id:"text",label:"Your reply",type:"textarea",full:true,required:true}],extra:`<div class="ar-note" style="margin-top:8px">${col==="lessons"?[d.homework?"<b>Homework:</b> "+esc(d.homework):"",d.lessonNote?"<b>Note:</b> <span data-noi18n>"+esc(d.lessonNote)+"</span>":""].filter(Boolean).join("<br>")||"Lesson "+esc(dLabel(d.date)):"“<span data-noi18n>"+esc(d.text||"")+"</span>”"}</div>`,
     onSave:x=>{const me=meWho(),R=(d[f.r]||[]).concat({by:me,text:x.text,at:new Date().toISOString()});const up={[f.r]:R};
       const author=col==="lessons"?(d.status==="changed"&&d.subTeacherId?d.subTeacherId:d.teacherId):d.teacherId;
       if(me!==author)up.replyNew=true;
@@ -2383,13 +2387,13 @@ function vHomework(){
   <div class="hw-tools"><div class="tv-weeknav" style="margin:0">${weekNav()}</div><div class="tv-lay" role="group" aria-label="Who">${btn("kids","Kids")}${btn("adults","Adults")}${btn("all","Everyone")}</div><input type="search" id="hw-q" class="inline-sel" placeholder="Search student, teacher, homework" value="${esc(hwQ)}" aria-label="Search homework"></div>
   ${days.length?days.map(d=>`<h2 class="hw-day">${esc(dLabel(d))}${d===today()?" · today":""}</h2><div class="hw-list">${L.filter(l=>l.date===d).map(l=>{const r=roomOf(l);return `<article class="tv-note hw-item">
     <div class="tv-nh"><b class="hw-stu"><a href="javascript:void 0" data-stu="${esc(l.studentId)}">${esc(nm("students",l.studentId))}</a></b><span>${esc(l.time||"")} · ${esc(nm("teachers",payTeacher(l)))}${r?" · "+esc(roomLetter(r)):""}</span>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</div>
-    ${hasHomework(l)?`<div class="feed-hw"><span class="feed-lbl">Homework${l.hwBy==="office"?" · from the office":""}</span>${l.homework?`<div class="tv-nt">${esc(l.homework)}</div>`:""}${hwFilesHtml(l,canWrite)}</div>`:`<div class="muted" style="font-size:13px">No homework set.</div>`}
+    ${hasHomework(l)?`<div class="feed-hw"><span class="feed-lbl">Homework${l.hwBy==="office"?" · from the office":""}</span>${l.homework?`<div class="tv-nt"><span data-noi18n>${esc(l.homework)}</span></div>`:""}${hwFilesHtml(l,canWrite)}</div>`:`<div class="muted" style="font-size:13px">No homework set.</div>`}
     ${canWrite?`<div class="hw-acts"><button type="button" class="btn sm ghost" data-hwedit="${esc(l.id)}">${hasHomework(l)?"Edit homework":"Add homework"}</button><label class="btn sm ghost hw-add"><input type="file" class="vh" accept="image/*,application/pdf" multiple data-hwup="${esc(l.id)}">+ Photo or file</label>${hasHomework(l)?`<button type="button" class="btn sm ghost danger-t" data-hwclear="${esc(l.id)}">Delete homework</button>`:""}</div>`:""}
-    ${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> ${esc(l.lessonNote)}</div>`:""}
+    ${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> <span data-noi18n>${esc(l.lessonNote)}</span></div>`:""}
     ${noteSocial("lessons",l)}</article>`}).join("")}</div>`).join(""):`<div class="panel empty">No homework this week${hwFilter!=="all"?" for "+(hwFilter==="kids"?"kids":"adults"):""}${hwQ?" matching “"+esc(hwQ)+"”":""}.</div>`}`;
 }
 function noteActs(n){return canEditNote(n)&&n.id?`<span class="tv-nacts"><button type="button" class="tv-nbtn" data-nedit="${esc(n.id)}">Edit</button><button type="button" class="tv-nbtn del" data-ndel="${esc(n.id)}">Delete</button></span>`:""}
-function noteHtml(n){return `<div class="tv-note${n.problem?" prob":""}${n.resolved?" done":""}${!n.teacherId?" office":""}"><div class="tv-nh"><b>${esc(n.teacherId?nm("teachers",n.teacherId):"Won Academy")}</b><span>${esc(noteTime(n))}${n.editedAt?" · edited":""}${n.lessonId&&S.lessons[n.lessonId]?" · lesson "+esc(dLabel(S.lessons[n.lessonId].date)):""}</span>${n.problem?`<span class="chip ${n.resolved?"":"bad"}">${n.resolved?"Problem · resolved":"Problem"}</span>`:""}${noteActs(n)}</div><div class="tv-nt">${esc(n.text)}</div>${noteSocial("notes",n)}</div>`}
+function noteHtml(n){return `<div class="tv-note${n.problem?" prob":""}${n.resolved?" done":""}${!n.teacherId?" office":""}"><div class="tv-nh"><b>${esc(n.teacherId?nm("teachers",n.teacherId):"Won Academy")}</b><span>${esc(noteTime(n))}${n.editedAt?" · edited":""}${n.lessonId&&S.lessons[n.lessonId]?" · lesson "+esc(dLabel(S.lessons[n.lessonId].date)):""}</span>${n.problem?`<span class="chip ${n.resolved?"":"bad"}">${n.resolved?"Problem · resolved":"Problem"}</span>`:""}${noteActs(n)}</div><div class="tv-nt"><span data-noi18n>${esc(n.text)}</span></div>${noteSocial("notes",n)}</div>`}
 function editNote(id){const n=S.notes[id];if(!n)return;
   form({title:"Edit note · "+nm("students",n.studentId),fields:[
     {id:"text",label:"Note",type:"textarea",full:true,required:true},
@@ -2467,7 +2471,7 @@ function vTeacherView(){
     const offNew=offAll.filter(l=>l.offSeen!==l.status&&l.date>=addDays(td,-14));
     const offCard=wk&&offNew.length?`<section class="tv-offs"><h2>Schedule changes</h2>${offNew.map(l=>`<div class="tv-off"><div><s>${esc(dLabel(l.date))} ${esc(l.time||"")} · ${esc(nm("students",l.studentId))}</s><div><b>${esc(OFFN_TXT[l.status]||"Cancelled")}</b> · please disregard this lesson.</div></div><button type="button" class="tv-nbtn" data-offseen="${esc(l.id)}">OK</button></div>`).join("")}</section>`:"";
     const onL=arr("notes").filter(n=>!n.teacherId&&n.by==="office"&&!(n.tSeen||{})[t.id]&&studentTeachers(n.studentId).includes(t.id)).sort((a,b)=>(b.at||"").localeCompare(a.at||""));
-    const onCard=wk&&onL.length?`<section class="tv-replies tv-onotes"><h2>New notes from the office</h2>${onL.map(n=>`<article class="tv-note"><div class="tv-nh"><b>${esc(nm("students",n.studentId))}</b><span>${esc(noteTime(n))}</span><span class="tv-nacts"><button type="button" class="tv-nbtn" data-onseen="${esc(n.id)}">OK, seen</button></span></div><div class="tv-nt">${esc(n.text)}</div>${noteSocial("notes",n)}</article>`).join("")}</section>`:"";
+    const onCard=wk&&onL.length?`<section class="tv-replies tv-onotes"><h2>New notes from the office</h2>${onL.map(n=>`<article class="tv-note"><div class="tv-nh"><b>${esc(nm("students",n.studentId))}</b><span>${esc(noteTime(n))}</span><span class="tv-nacts"><button type="button" class="tv-nbtn" data-onseen="${esc(n.id)}">OK, seen</button></span></div><div class="tv-nt"><span data-noi18n>${esc(n.text)}</span></div>${noteSocial("notes",n)}</article>`).join("")}</section>`:"";
     const pcL=arr("lessons").filter(l=>l.pubChange&&(l.pubChange.tids||[]).includes(t.id)&&!(l.pubChange.seen||{})[t.id]&&!l.offNotice&&((l.date||"")>=addDays(td,-14)||(l.pubChange.from&&l.pubChange.from.date>=addDays(td,-14)))).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")));
     const pcWhen=(d,tm,et,du,room)=>`${dLabel(d)} ${tm||""}${et?"–"+et:""}${room?" · "+roomLetter(room):""}`;
     const pcCard=wk&&pcL.length?`<section class="tv-offs tv-pcs"><h2>Schedule changed</h2>${pcL.map(l=>{const f=l.pubChange.from,me=(l.subTeacherId||l.teacherId)===t.id,r=S.classrooms[l.classroomId];
@@ -2493,7 +2497,7 @@ function vTeacherView(){
           ${hw?`<div class="tv-sum"><span class="feed-lbl">Homework</span>${l.homework?esc(l.homework.length>90?l.homework.slice(0,90)+"…":l.homework):""}${(l.hwFiles||[]).length?` <span class="muted">· ${(l.hwFiles||[]).length} file${(l.hwFiles||[]).length>1?"s":""}</span>`:""}</div>`:""}
           ${S.students[l.studentId]&&S.students[l.studentId].isGroup?attendanceSummary(l):""}
           ${rated||tr.studentLate||tr.teacherLate?`<div class="tv-sum">${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}${lateTags(tr)}</div>`:""}
-          ${l.lessonNote?`<div class="tv-sum"><span class="feed-lbl">Note</span>${esc(l.lessonNote)}</div>`:""}
+          ${l.lessonNote?`<div class="tv-sum"><span class="feed-lbl">Note</span><span data-noi18n>${esc(l.lessonNote)}</span></div>`:""}
           ${hw||l.lessonNote||(l.noteReplies||[]).length?noteSocial("lessons",l):""}
           <button type="button" class="tv-edit" data-tvedit="${esc(l.id)}">Edit</button></article>`}
         return `<article class="tv-card" id="tvc-${esc(l.id)}" style="--rc:${r&&r.color?`var(--rm-${r.color})`:"var(--line)"}">
@@ -2519,7 +2523,7 @@ function vTeacherView(){
         </div>${tst(l)!=="scheduled"?`<div class="tv-resetrow"><button type="button" class="tv-btn ghost tv-reset" data-tvreset="${esc(l.id)}" title="Remove your mark, as if you hadn't marked this lesson yet">↺ Reset changes</button></div>`:""}
       </article>`}).join("")}${wk?"":closingCard(d,t.id)}</section>`).join("")||(wk?"":`<div class="panel empty">No lessons this week.</div>`)}${wk?(SD.length?"":`<div class="panel empty">All your lessons are confirmed ✓ Today's lessons appear here to mark after you teach them. To see or change any lesson, open <b>My lessons</b>.</div>`)+(()=>{const c=closerOf(td);return c&&c.tid===t.id?closingCard(td,t.id):""})():""}`;
   }else if(tvTab==="guide"){
-    body=TEACHER_GUIDE;
+    body=teacherGuide();
   }else if(tvTab==="students"){
     const tMats=arr("materials").filter(m=>matForTeacher(m,t.id)).sort((a,b)=>(a.title||"").localeCompare(b.title||""));
     const keepFrom=addDays(today(),-21);
@@ -2528,7 +2532,7 @@ function vTeacherView(){
       const next=mine.filter(l=>l.studentId===sid&&l.date>=td&&l.status==="scheduled").sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))[0];
       const feed=studentFeed(sid);
       const sch=stuSchoolTxt(s),sMats=arr("materials").filter(m=>matForStudent(m,sid));
-      return `<article class="tv-scard"><div class="tv-sh"><div><h3>${esc(s.name)}</h3>${sch?`<div class="tv-school">${esc(sch)}</div>`:""}${reportsHtml(s,false)}${sMats.length?`<div class="tv-school">📚 ${sMats.map(m=>esc(m.title)).join(", ")}</div>`:""}<div class="muted" style="font-size:13px">${esc([s.language,s.level,others.length?"Also taught by "+others.join(", "):"",next?"Next: "+dLabel(next.date)+" "+(next.time||""):""].filter(Boolean).join(" · "))}</div>${Array.isArray(s.books)&&s.books.some(b=>bkProg(b)!=="done")?`<div class="bk-prog"><span class="feed-lbl">Books</span>${s.books.map((b,i)=>bkProg(b)==="done"?"":`<div class="bk-row"><span>${esc(b.title)}</span>${bkSel(sid,i,b)}</div>`).join("")}</div>`:""}</div><button type="button" class="tv-btn ghost" data-tvsnote="${esc(sid)}">Add note</button></div>
+      return `<article class="tv-scard"><div class="tv-sh"><div><h3>${esc(s.name)}</h3>${sch?`<div class="tv-school">${esc(sch)}</div>`:""}${reportsHtml(s,false)}${sMats.length?`<div class="tv-school">📚 ${sMats.map(m=>esc(m.title)).join(", ")}</div>`:""}<div class="muted" style="font-size:13px">${esc([s.language,s.level,others.length?"Also taught by "+others.join(", "):"",next?"Next: "+dLabel(next.date)+" "+(next.time||""):""].filter(Boolean).join(" · "))}</div>${Array.isArray(s.books)&&s.books.some(b=>bkProg(b)!=="done")?`<div class="bk-prog"><span class="feed-lbl">Books</span>${s.books.map((b,i)=>bkProg(b)==="done"?"":`<div class="bk-row"><span><span data-noi18n>${esc(b.title)}</span></span>${bkSel(sid,i,b)}</div>`).join("")}</div>`:""}</div><button type="button" class="tv-btn ghost" data-tvsnote="${esc(sid)}">Add note</button></div>
       ${feed.length?feed.slice(0,4).map(x=>x.html).join("")+(feed.length>4?`<button type="button" class="tv-more" data-tvstu="${esc(sid)}">Show all ${feed.length}</button>`:""):`<p class="muted" style="margin:6px 0 0;font-size:13px">No homework or notes yet.</p>`}</article>`}).join(""):`<div class="panel empty">No students yet.</div>`);
   }else{
     const weeks=monthMondays(month);let tot=0,paidTot=0;const f=payFreq(t),tx=taxPct(t);
@@ -2541,7 +2545,7 @@ function vTeacherView(){
     <tr class="tot"><td><b>Total</b></td><td></td><td class="num"><b>${money(tot)}</b></td><td>${paidTot?`<b>${money(paidTot)}</b> paid`:""}</td></tr></tbody></table></div>
     <p class="muted" style="font-size:13px;margin:8px 2px 0"><b>Your Done lessons</b> counts the lessons you marked Done (no show, excused, teacher absent, not done and other are not added). <b>Paid by Won Academy</b> is what the school recorded as paid${tx?`, before ${tx}% tax`:""}. If something doesn't match, please contact the office.</p>`;
   }
-  return `<div class="tv-wrap">${banner}<div class="tv-head"><h1>Hi, ${esc(t.name)}</h1><div class="modes" role="group" aria-label="Section">${tabs}</div></div>${body}</div>`;
+  return `<div class="tv-wrap">${banner}<div class="tv-head"><h1>Hi, ${esc(t.name)}</h1>${langSw()}<div class="modes" role="group" aria-label="Section">${tabs}</div></div>${body}</div>`;
 }
 function newToMe(l,tid){const before=arr("lessons").filter(x=>x.studentId===l.studentId&&x.id!==l.id&&validDate(x.date)&&(x.date+(x.time||""))<(l.date+(l.time||"")));
   if(before.some(x=>x.teacherId===tid))return "";const others=[...new Set(before.filter(x=>x.teacherId&&x.teacherId!==tid&&!isOff(x)).map(x=>x.teacherId))];
@@ -2551,8 +2555,8 @@ function studentFeed(sid){
   arr("lessons").filter(l=>l.studentId===sid&&validDate(l.date)&&(hasHomework(l)||l.lessonNote)).forEach(l=>{
     const who=nm("teachers",l.status==="changed"&&l.subTeacherId?l.subTeacherId:l.teacherId);
     items.push({k:l.date+"T"+(l.time||"00:00"),html:`<div class="tv-note"><div class="tv-nh"><b>${esc(who)}</b><span>${esc(dLabel(l.date))} lesson</span>${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}${canEditLessonFeed(l)?`<span class="tv-nacts"><button type="button" class="tv-nbtn" data-lfedit="${esc(l.id)}">Edit</button></span>`:""}</div>
-      ${hasHomework(l)?`<div class="feed-hw"><span class="feed-lbl">Homework</span>${l.homework?`<div class="tv-nt">${esc(l.homework)}</div>`:""}${hwFilesHtml(l,false)}</div>`:""}
-      ${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> ${esc(l.lessonNote)}</div>`:""}${noteSocial("lessons",l)}</div>`});
+      ${hasHomework(l)?`<div class="feed-hw"><span class="feed-lbl">Homework</span>${l.homework?`<div class="tv-nt"><span data-noi18n>${esc(l.homework)}</span></div>`:""}${hwFilesHtml(l,false)}</div>`:""}
+      ${l.lessonNote?`<div class="tv-nt"><span class="feed-lbl">Note</span> <span data-noi18n>${esc(l.lessonNote)}</span></div>`:""}${noteSocial("lessons",l)}</div>`});
   });
   studentNotes(sid).forEach(n=>items.push({k:(n.at||"").slice(0,16),html:noteHtml(n)}));
   return items.sort((a,b)=>b.k.localeCompare(a.k));
@@ -2560,14 +2564,14 @@ function studentFeed(sid){
 function openStudentNotes(sid,tid){
   const feed=studentFeed(sid), s=S.students[sid], tids=studentTeachers(sid), bks=s&&Array.isArray(s.books)?s.books:[];
   const m=modal(`<div class="mh"><div><h2>${esc(s?s.name:"Student")}</h2><p class="muted" style="margin:2px 0 0;font-size:13px">${esc([s&&s.language,s&&s.level].filter(Boolean).join(" · "))}${tids.length?(s&&(s.language||s.level)?" · ":"")+"Teachers: "+esc(tids.map(t=>nm("teachers",t)).join(", ")):""}</p></div><button class="btn ghost" data-close type="button" aria-label="Close">✕</button></div>
-  ${bks.length?`<div class="bk-prog"><span class="feed-lbl">Books</span>${bks.map((b,i)=>`<div class="bk-row"><span>${esc(b.title)}${b.progressAt?` <small class="muted">· updated ${esc(dLabel(b.progressAt))}</small>`:""}</span>${bkSel(sid,i,b)}</div>`).join("")}</div>`:""}
+  ${bks.length?`<div class="bk-prog"><span class="feed-lbl">Books</span>${bks.map((b,i)=>`<div class="bk-row"><span><span data-noi18n>${esc(b.title)}</span>${b.progressAt?` <small class="muted">· updated ${esc(dLabel(b.progressAt))}</small>`:""}</span>${bkSel(sid,i,b)}</div>`).join("")}</div>`:""}
   <div class="tools"><button class="btn pri sm" type="button" id="sn-add">Add note</button><span class="muted" style="font-size:12.5px">All homework and notes from every teacher, newest first.</span></div>
   ${feed.length?feed.map(x=>x.html).join(""):`<p class="muted">Nothing yet. Homework and notes from every teacher of this student appear here.</p>`}`);
   m.querySelector("#sn-add").onclick=()=>addNote({studentId:sid,teacherId:tid});wireBookProg(m);
 }
 function problemsPanel(){
   const P=openProblems();if(!P.length)return "";
-  return `<div class="probs"><h2>Problems reported by teachers <span class="chip bad">${P.length}</span></h2>${P.slice(0,8).map(n=>`<div class="prob-row"><div><b>${esc(nm("teachers",n.teacherId))}</b> · <a href="javascript:void 0" data-stu="${esc(n.studentId)}">${esc(nm("students",n.studentId))}</a> <span class="muted">${esc(noteTime(n))}</span><div>${esc(n.text)}</div></div>${canWrite?`<button type="button" class="btn sm" data-resolve="${esc(n.id)}">Mark resolved</button>`:""}</div>`).join("")}</div>`;
+  return `<div class="probs"><h2>Problems reported by teachers <span class="chip bad">${P.length}</span></h2>${P.slice(0,8).map(n=>`<div class="prob-row"><div><b>${esc(nm("teachers",n.teacherId))}</b> · <a href="javascript:void 0" data-stu="${esc(n.studentId)}">${esc(nm("students",n.studentId))}</a> <span class="muted">${esc(noteTime(n))}</span><div><span data-noi18n>${esc(n.text)}</span></div></div>${canWrite?`<button type="button" class="btn sm" data-resolve="${esc(n.id)}">Mark resolved</button>`:""}</div>`).join("")}</div>`;
 }
 /* ---------- payments by QR (Czech QR Platba) + bank statement check ---------- */
 function mod97(s){let r=0;for(const ch of s)r=(r*10+Number(ch))%97;return r}
@@ -2713,8 +2717,8 @@ function openHomework(lid,ids){
   const l=S.lessons[lid];if(!l)return;const i=ids.indexOf(lid);
   const tch=nm("teachers",l.status==="changed"&&l.subTeacherId?l.subTeacherId:l.teacherId);
   const m=modal(`<div class="mh"><div><h2>Homework</h2><p class="muted" style="margin:2px 0 0">${esc(dLabel(l.date))}${l.time?" · "+esc(l.time):""} · ${esc(tch)}</p></div><button class="btn ghost" data-close type="button" aria-label="Close">✕</button></div>
-    ${l.topic?`<div><span class="sv-lbl">Covered in class</span><p style="margin:2px 0 0">${esc(l.topic)}</p></div>`:""}
-    ${l.homework?`<p class="sv-hw" style="margin:0">${esc(l.homework)}</p>`:""}
+    ${l.topic?`<div><span class="sv-lbl">Covered in class</span><p style="margin:2px 0 0"><span data-noi18n>${esc(l.topic)}</span></p></div>`:""}
+    ${l.homework?`<p class="sv-hw" style="margin:0"><span data-noi18n>${esc(l.homework)}</span></p>`:""}
     ${hwFilesHtml(l,false).replace('class="hw-files"','class="hw-files big"')}
     <div class="mf"><button type="button" class="btn" data-hwnav="${esc(ids[i+1]||"")}"${ids[i+1]?"":" disabled"}>‹ Older</button><button type="button" class="btn" data-hwnav="${esc(ids[i-1]||"")}"${i>0?"":" disabled"}>Newer ›</button></div>`);
   m.querySelectorAll("[data-hwnav]").forEach(b=>b.onclick=()=>{if(b.dataset.hwnav)openHomework(b.dataset.hwnav,ids)});
@@ -3267,6 +3271,396 @@ const TEACHER_GUIDE=`<article class="tv-guide">
 
 <div class="tg-box tg-help"><b>Something wrong or unclear?</b> Please contact the office — we're happy to help. Thank you for marking your lessons every day!</div>
 </article>`;
+/* ---------- translations: teacher, student and parent pages (English / 한국어 / Čeština) ---------- */
+const LANGS=[["en","English"],["ko","한국어"],["cs","Čeština"]];
+const I18N_PAIRS=[
+// tabs + headings
+["My week","이번 주","Můj týden"],["My lessons","내 수업","Moje lekce"],["My students","내 학생","Moji studenti"],["My hours","근무 시간","Moje hodiny"],["Guide","사용 안내","Návod"],
+["Week view:","주간 보기:","Zobrazení týdne:"],["Whole week","한 주 전체","Celý týden"],["Bigger","크게 보기","Větší"],
+["Mon","월","po"],["Tue","화","út"],["Wed","수","st"],["Thu","목","čt"],["Fri","금","pá"],["Sat","토","so"],["Sun","일","ne"],
+["To confirm","표시할 수업","K označení"],
+["All your lessons are confirmed ✓ Today's lessons appear here to mark after you teach them. To see or change any lesson, open","모든 수업을 표시했어요 ✓ 오늘 수업은 수업 후 표시할 수 있도록 여기에 나타나요. 수업을 보거나 바꾸려면 다음을 여세요:","Všechny lekce máte označené ✓ Dnešní lekce se tu objeví, abyste je po výuce označili. Chcete-li zobrazit nebo změnit kteroukoli lekci, otevřete"],
+["Preview as teacher","선생님 화면 미리보기","Náhled jako učitel"],["Preview as student","학생 화면 미리보기","Náhled jako student"],["Preview as parent","학부모 화면 미리보기","Náhled jako rodič"],
+["Section","섹션","Sekce"],["Child","자녀","Dítě"],["Language","언어","Jazyk"],
+["Previous week","지난주","Předchozí týden"],["Next week","다음 주","Další týden"],["Week layout","주간 배치","Rozložení týdne"],["Previous month","지난달","Předchozí měsíc"],["Next month","다음 달","Další měsíc"],
+["No classroom","교실 없음","Bez učebny"],["No room","교실 없음","Bez učebny"],["This week","이번 주","Tento týden"],["No lessons this week.","이번 주에는 수업이 없어요.","Tento týden žádné lekce."],["No students yet.","아직 학생이 없어요.","Zatím žádní studenti."],
+["today","오늘","dnes"],["tomorrow","내일","zítra"],
+// lesson card
+["Homework","숙제","Úkol"],["needed before Done","완료 전에 꼭 필요해요","nutný před „Hotovo“"],["+ Photo or file","+ 사진 또는 파일","+ Fotka nebo soubor"],
+["How did the student do?","학생은 어땠나요?","Jak se studentovi dařilo?"],["In class today","오늘 수업 태도","Dnes v hodině"],["Homework from last lesson","지난 수업 숙제","Úkol z minulé lekce"],
+["Not focused","집중하지 않음","Nesoustředěný"],["Needs more effort","노력이 더 필요함","Potřebuje víc snahy"],["Engaged","적극적으로 참여함","Zapojený"],["Excellent effort","매우 열심히 함","Výborná snaha"],
+["Done, many mistakes","해 왔지만 실수가 많음","Udělaný, hodně chyb"],["Done well","잘 해 옴","Udělaný dobře"],["Excellent work","아주 잘 해 옴","Výborná práce"],
+["Notes and others","메모 및 기타","Poznámky a další"],["optional","선택","nepovinné"],["Student was late","학생이 늦음","Student přišel pozdě"],["I was late","내가 늦음","Přišel(a) jsem pozdě"],
+["Done","완료","Hotovo"],["Something else ▾","기타 ▾","Něco jiného ▾"],["Something else","기타","Něco jiného"],
+["Student no show","학생 무단 불참","Student nepřišel"],["Student excused","학생 사전 취소","Student omluven"],["Teacher absent","선생님 결근","Učitel chyběl"],["Not done","진행 안 됨","Neproběhlo"],["Other","기타","Jiné"],
+["Write the homework, add a photo, or both","숙제를 쓰거나, 사진을 추가하거나, 둘 다 하세요","Napište úkol, přidejte fotku, nebo obojí"],
+["Other notes for the office and the student's other teachers","학원과 이 학생의 다른 선생님께 남길 메모","Další poznámky pro kancelář a ostatní učitele studenta"],
+["this student doesn't take homework","이 학생은 숙제를 받지 않아요","tento student nedostává úkoly"],["No homework for this student","이 학생은 숙제 없음","Tento student nemá úkoly"],["doesn't need homework","숙제가 필요 없어요","nepotřebuje úkol"],
+["Save changes","변경 저장","Uložit změny"],["Reset changes","표시 초기화","Zrušit označení"],["Reset changes?","표시를 초기화할까요?","Zrušit označení?"],["Reset","초기화","Vynulovat"],
+["Edit","수정","Upravit"],["Delete","삭제","Smazat"],["Cancel","취소","Zrušit"],["Yes","예","Ano"],["Close","닫기","Zavřít"],["Save","저장","Uložit"],["Send","보내기","Odeslat"],["OK","확인","OK"],["Later","나중에","Později"],
+["Saved","저장됨","Uloženo"],["Saved:","저장됨:","Uloženo:"],["Saving…","저장 중…","Ukládám…"],["Changes saved ✓","변경 내용 저장됨 ✓","Změny uloženy ✓"],["Changes reset — not marked yet","초기화됨 — 아직 표시 안 됨","Vynulováno — zatím neoznačeno"],
+["Homework saved","숙제 저장됨","Úkol uložen"],["Note saved","메모 저장됨","Poznámka uložena"],["Rating removed","평가 삭제됨","Hodnocení odebráno"],["Tap again to remove","다시 누르면 지워져요","Klepněte znovu pro odebrání"],
+["Please rate first:","먼저 평가해 주세요:","Nejdřív prosím ohodnoťte:"],["Marked as seen","확인으로 표시함","Označeno jako viděné"],["OK — removed from your schedule","확인 — 내 일정에서 삭제됨","OK — odstraněno z vašeho rozvrhu"],
+["Write what happened in the note first.","먼저 메모에 무슨 일이 있었는지 써 주세요.","Nejdřív do poznámky napište, co se stalo."],["What happened?","무슨 일이 있었나요?","Co se stalo?"],
+["Choose teacher","선생님 선택","Vyberte učitele"],["Choose who taught the lesson instead.","대신 수업한 선생님을 선택하세요.","Vyberte, kdo lekci učil místo vás."],["Taught instead by","대신 수업한 선생님","Místo vás učil(a)"],
+["Office marked:","학원 표시:","Kancelář označila:"],["Or tap a different result below to change how the lesson went.","또는 아래에서 다른 결과를 눌러 바꿀 수 있어요.","Nebo klepněte níže na jiný výsledek a změňte, jak lekce proběhla."],
+["Student late","학생 지각","Student přišel pozdě"],["Teacher late","선생님 지각","Učitel přišel pozdě"],["not marked","미표시","neoznačeno"],["min late","분 늦음","min zpoždění"],
+["Homework photo","숙제 사진","Fotka úkolu"],["Couldn't upload","업로드 실패","Nahrání se nezdařilo"],["Uploading isn't available here.","여기서는 업로드할 수 없어요.","Nahrávání tady není k dispozici."],
+["added","추가됨","přidáno"],["rated","평가함","ohodnoceno"],["updated","수정됨","upraveno"],
+// attendance (groups)
+["Attendance","출석","Docházka"],["Here","출석","Přítomen"],["Absent","결석","Nepřítomen"],["Mark everyone here","모두 출석으로 표시","Označit všechny jako přítomné"],
+// notices
+["Seen","확인","Viděno"],["OK, seen","확인했어요","OK, viděno"],["Reply","답장","Odpovědět"],["From the office","학원 공지","Od kanceláře"],
+["Schedule changes","일정 변경","Změny rozvrhu"],["Schedule changed","일정이 바뀌었어요","Rozvrh se změnil"],["Now:","새 시간:","Nově:"],["New lesson:","새 수업:","Nová lekce:"],
+["Moved to next month","다음 달로 옮김","Přesunuto na další měsíc"],["Cancelled","취소됨","Zrušeno"],["please disregard","무시해 주세요","prosím ignorujte"],["please disregard this lesson.","이 수업은 무시해 주세요.","tuto lekci prosím ignorujte."],["Please disregard this lesson.","이 수업은 무시해 주세요.","Tuto lekci prosím ignorujte."],
+["If you can't make it at the new time, please let the office know as soon as you can. Thank you for your understanding!","새 시간에 수업이 어려우시면 최대한 빨리 학원에 알려 주세요. 양해해 주셔서 감사합니다!","Pokud v novém čase nemůžete, dejte prosím co nejdříve vědět kanceláři. Děkujeme za pochopení!"],
+["New notes from the office","학원에서 온 새 메모","Nové poznámky od kanceláře"],["New replies to your notes","내 메모에 새 답장","Nové odpovědi na vaše poznámky"],
+["New lesson offer","새 수업 제안","Nová nabídka lekce"],["Lesson offers","수업 제안","Nabídky lekcí"],["I'll take it","제가 할게요","Vezmu si ji"],["Can't","못 해요","Nemůžu"],["Already taken","이미 다른 선생님이 맡았어요","Už je obsazeno"],
+["You took this lesson","이 수업을 맡았어요","Tuto lekci jste si vzali"],["took this lesson","님이 이 수업을 맡았어요","si vzal(a) tuto lekci"],["Action required","확인 필요","Vyžaduje akci"],
+["New student for you","새 학생","Nový student pro vás"],["covering for","대신 수업:","zástup za"],["now your lesson","이제 내 수업","teď vaše lekce"],["you don't teach this lesson any more.","이 수업은 더 이상 내 수업이 아니에요.","tuto lekci už neučíte."],
+["Preview only — the teacher taps OK on their own view","미리보기 전용 — 선생님이 자기 화면에서 확인을 눌러요","Jen náhled — učitel klepne na OK ve svém zobrazení"],["Preview only — the teacher taps this on their own view","미리보기 전용 — 선생님이 자기 화면에서 눌러요","Jen náhled — učitel na to klepne ve svém zobrazení"],["Preview only — they tap this on their own page","미리보기 전용 — 본인 화면에서 눌러요","Jen náhled — klepnou na to na své stránce"],
+// closing
+["You close the school today","오늘 학원 마감 담당이에요","Dnes zamykáte školu"],["You close the school","학원 마감 담당","Zamykáte školu"],["Closing the school","학원 마감","Zamykání školy"],
+["Before you leave, check every room and tick each item.","나가기 전에 모든 교실을 확인하고 항목마다 체크해 주세요.","Před odchodem zkontrolujte všechny místnosti a odškrtněte každou položku."],
+["Heating is off in every room","모든 교실 난방을 껐어요","Topení je vypnuté ve všech místnostech"],["Lights are off in every room and the hallway","모든 교실과 복도 불을 껐어요","Světla jsou zhasnutá ve všech místnostech i na chodbě"],["Bathroom light is off (look inside the bathroom)","화장실 불을 껐어요 (화장실 안을 확인)","Světlo na toaletě je zhasnuté (podívejte se dovnitř)"],["All windows are closed","모든 창문을 닫았어요","Všechna okna jsou zavřená"],["The door is locked","문을 잠갔어요","Dveře jsou zamčené"],["Everything is off and locked","모두 끄고 잠갔어요","Vše je vypnuté a zamčené"],
+["Not the last one to leave? Send closing to another teacher","마지막으로 나가지 않나요? 다른 선생님께 마감 넘기기","Neodcházíte poslední? Předejte zamykání jinému učiteli"],["Send closing to another teacher","다른 선생님께 마감 넘기기","Předat zamykání jinému učiteli"],["Teacher to send closing duty to","마감을 넘길 선생님","Učitel, kterému předáte zamykání"],
+["School closed ✓","학원 마감 완료 ✓","Škola zamčena ✓"],["They closed the school ✓","마감 완료 ✓","Školu zamkli ✓"],["sent you the closing duty.","님이 마감을 넘겼어요.","vám předal(a) zamykání."],["A checklist will appear here that day.","그날 여기에 체크리스트가 나타나요.","Ten den se tu objeví kontrolní seznam."],["Checked at","확인 시간","Zkontrolováno v"],
+// my students / notes
+["Add note","메모 추가","Přidat poznámku"],["No homework or notes yet.","아직 숙제나 메모가 없어요.","Zatím žádné úkoly ani poznámky."],["Note","메모","Poznámka"],["Your note","내 메모","Vaše poznámka"],
+["Note for other teachers","다른 선생님께 남기는 메모","Poznámka pro ostatní učitele"],["Problem: the office needs to know","문제: 학원이 알아야 해요","Problém: kancelář to musí vědět"],["Problem","문제","Problém"],
+["What you covered","수업 내용","Co jste probrali"],["What you covered, homework, how the student is doing…","수업 내용, 숙제, 학생 상태…","Co jste probrali, úkol, jak se studentovi daří…"],["Sick, holiday, moved to Friday…","아픔, 휴가, 금요일로 변경…","Nemoc, dovolená, přesunuto na pátek…"],
+["All homework and notes from every teacher, newest first.","모든 선생님의 숙제와 메모, 최신순.","Všechny úkoly a poznámky od všech učitelů, od nejnovějších."],
+["Nothing yet. Homework and notes from every teacher of this student appear here.","아직 없어요. 이 학생의 모든 선생님이 남긴 숙제와 메모가 여기에 나타나요.","Zatím nic. Zobrazí se tu úkoly a poznámky od všech učitelů tohoto studenta."],
+["can read this note. Problems also go to the office.","이 메모를 볼 수 있어요. 문제는 학원에도 전달돼요.","může číst tuto poznámku. Problémy jdou i do kanceláře."],["Everyone who teaches","이 학생을 가르치는 모든 선생님이","Každý, kdo učí"],
+["Show all","모두 보기","Zobrazit vše"],["Show fewer","간단히 보기","Zobrazit méně"],["School report","학교 성적표","Školní vysvědčení"],["School reports","학교 성적표","Školní vysvědčení"],["School report added","학교 성적표 추가됨","Vysvědčení přidáno"],
+["Materials","자료","Materiály"],["Books","교재","Učebnice"],["Current books","현재 교재","Současné učebnice"],["Previous books","이전 교재","Předchozí učebnice"],["Started","시작함","Začato"],["In progress","진행 중","Probíhá"],["Halfway","절반","V polovině"],["Almost finished","거의 끝남","Skoro hotovo"],["Finished","끝남","Dokončeno"],
+["Kids","어린이","Děti"],["Adults","성인","Dospělí"],["Kid","어린이","Dítě"],["Adult","성인","Dospělý"],
+["English","영어","angličtina"],["Korean","한국어","korejština"],["korean","한국어","korejština"],["Czech","체코어","čeština"],["French","프랑스어","francouzština"],["German","독일어","němčina"],["Spanish","스페인어","španělština"],["Japanese","일본어","japonština"],["Chinese","중국어","čínština"],
+// my hours
+["Week","주","Týden"],["Minutes","분","Minuty"],["Your Done lessons","완료한 수업","Vaše hotové lekce"],["Paid by Won Academy","Won Academy 지급액","Vyplaceno Won Academy"],["Total","합계","Celkem"],
+["counts the lessons you marked Done (no show, excused, teacher absent, not done and other are not added).","— ‘완료’로 표시한 수업만 셉니다 (무단 불참, 사전 취소, 선생님 결근, 진행 안 됨, 기타는 포함되지 않아요).","– počítá lekce, které jste označili Hotovo (nepřišel, omluven, učitel chyběl, neproběhlo a jiné se nezapočítávají)."],
+["is what the school recorded as paid. If something doesn't match, please contact the office.","— 학원에서 지급한 것으로 기록된 금액이에요. 맞지 않는 부분이 있으면 학원에 연락해 주세요.","– částka, kterou škola zaznamenala jako vyplacenou. Pokud něco nesedí, kontaktujte prosím kancelář."],
+["Not yet","아직","Zatím ne"],
+// student + parent pages
+["Next lesson","다음 수업","Další lekce"],["No homework right now.","지금은 숙제가 없어요.","Momentálně žádný úkol."],["Coming up","예정된 수업","Nadcházející lekce"],["This month's lessons","이번 달 수업","Lekce tento měsíc"],["Coming soon","곧 나와요","Brzy"],
+["No lesson booked yet","아직 예약된 수업이 없어요","Zatím žádná naplánovaná lekce"],["The school will add your next lesson.","학원에서 다음 수업을 추가할 거예요.","Škola přidá vaši další lekci."],["Nothing booked yet.","아직 예약된 수업이 없어요.","Zatím nic naplánováno."],
+["Time to be confirmed","시간 미정","Čas bude upřesněn"],["Scheduled","예정","Naplánováno"],["Missed","결석","Zmeškáno"],["Cancelled by school","학원 사정으로 취소","Zrušeno školou"],["Moved","변경됨","Přesunuto"],["Make-up coming","보강 예정","Bude náhradní lekce"],["Cancelled (charged)","취소 (수업료 부과)","Zrušeno (účtováno)"],["Other teacher","다른 선생님","Jiný učitel"],["See school","학원에 문의","Informujte se ve škole"],
+["Attitude","수업 태도","Přístup"],["Teacher","선생님","Učitel"],["Teachers","선생님","Učitelé"],["Homework and comments","숙제와 코멘트","Úkoly a komentáře"],["Show older","이전 항목 보기","Zobrazit starší"],
+["Fees","수업료","Poplatky"],["Lessons","수업","Lekce"],["Not paid yet","아직 미납","Zatím nezaplaceno"],["Paid","납부 완료","Zaplaceno"],["paid","납부함","zaplaceno"],["Half paid","절반 납부","Zaplaceno z poloviny"],["Part paid","일부 납부","Zaplaceno částečně"],
+["No fee for this month yet.","이번 달 수업료가 아직 없어요.","Za tento měsíc zatím není poplatek."],["Lessons + books","수업 + 교재","Lekce + učebnice"],["Paid ahead","선납","Zaplaceno předem"],["Monthly","월납","Měsíčně"],["Monthly fee","월 수업료","Měsíční poplatek"],["paid monthly","매월 납부","placeno měsíčně"],
+["Additional lessons","추가 수업","Lekce navíc"],["Lessons not happening","진행되지 않는 수업","Lekce, které se nekonají"],["Fewer lessons","줄어든 수업","Méně lekcí"],["Missed last month (paid)","지난달 빠진 수업 (납부함)","Zmeškané minulý měsíc (zaplacené)"],["(last month's price per lesson)","(지난달 수업당 금액)","(cena za lekci z minulého měsíce)"],
+["Fee set by the school","학원에서 정한 수업료","Poplatek stanovený školou"],["Worked out from the plan","요금제로 계산","Spočítáno podle tarifu"],["Company invoice (lessons per month)","회사 청구 (월별 수업)","Faktura firmě (lekce za měsíc)"],["Per lesson (count each month)","수업당 (매달 계산)","Za lekci (počítá se každý měsíc)"],
+["Every week","매주","Každý týden"],["Every 2 weeks","2주마다","Každé 2 týdny"],["Every month","매달","Každý měsíc"],["Bundle","묶음 결제","Balíček"],
+["Pay by QR code","QR 코드로 납부","Zaplatit QR kódem"],["Open your bank app, choose QR payment and scan this code. On this phone? Take a screenshot and open it in the bank app.","은행 앱을 열고 QR 결제를 선택한 뒤 이 코드를 스캔하세요. 이 휴대폰으로 보고 있나요? 화면을 캡처해서 은행 앱에서 여세요.","Otevřete bankovní aplikaci, zvolte platbu QR kódem a naskenujte tento kód. Jste na tomto telefonu? Udělejte snímek obrazovky a otevřete ho v bankovní aplikaci."],
+["Amount","금액","Částka"],["Account","계좌","Účet"],["Variable symbol","변동 기호 (VS)","Variabilní symbol"],["Message","메시지","Zpráva"],["Copy payment details","결제 정보 복사","Kopírovat platební údaje"],["Loading QR…","QR 불러오는 중…","Načítám QR…"],["Copied","복사됨","Zkopírováno"],["Payment details copied","결제 정보가 복사됐어요","Platební údaje zkopírovány"],
+["Add the school's bank account in","학원 은행 계좌를 다음에서 추가하세요:","Přidejte bankovní účet školy v"],["Settings","설정","Nastavení"],["to show a payment QR code here.","그러면 여기에 결제 QR 코드가 표시돼요.","– zde se pak zobrazí QR kód pro platbu."],
+["Moved lessons","옮긴 수업","Přesunuté lekce"],["Monthly report","월간 보고서","Měsíční zpráva"],["Exam prep","시험 준비","Příprava na zkoušku"],
+// notifications card
+["Turn on notifications","알림 켜기","Zapnout oznámení"],["Turn on","켜기","Zapnout"],
+["Get a message on your phone when your schedule changes or there's a new lesson offer. The app icon also shows how many new things are waiting.","일정이 바뀌거나 새 수업 제안이 오면 휴대폰으로 알림을 받아요. 앱 아이콘에도 새 소식 개수가 표시돼요.","Dostanete zprávu do telefonu, když se změní rozvrh nebo přijde nová nabídka lekce. Ikona aplikace také ukáže, kolik nových věcí na vás čeká."],
+["Get notified on your iPhone","아이폰에서 알림 받기","Dostávejte oznámení na iPhonu"],["To receive notifications, add this app to your Home Screen first: tap","알림을 받으려면 먼저 이 앱을 홈 화면에 추가하세요:","Chcete-li dostávat oznámení, nejdřív přidejte aplikaci na plochu: klepněte na"],["Add to Home Screen","홈 화면에 추가","Přidat na plochu"],
+[". Then open Won Academy from the new icon and turn notifications on here.",". 그다음 새 아이콘으로 Won Academy를 열고 여기서 알림을 켜세요.",". Pak otevřete Won Academy z nové ikony a zapněte tu oznámení."],
+["Notifications are blocked","알림이 차단되어 있어요","Oznámení jsou blokovaná"],["Your browser is blocking notifications for this app. Allow them in the browser or phone settings for app.wonacademy.cz, then reload.","브라우저가 이 앱의 알림을 막고 있어요. 브라우저나 휴대폰 설정에서 app.wonacademy.cz 알림을 허용한 뒤 새로고침하세요.","Prohlížeč blokuje oznámení této aplikace. Povolte je v nastavení prohlížeče nebo telefonu pro app.wonacademy.cz a stránku znovu načtěte."],
+["Notifications on ✓","알림 켜짐 ✓","Oznámení zapnuta ✓"],["Notifications not allowed","알림이 허용되지 않았어요","Oznámení nejsou povolena"],["Couldn't turn on notifications:","알림을 켜지 못했어요:","Oznámení se nepodařilo zapnout:"],
+["Sign out","로그아웃","Odhlásit se"],
+["from the office","학원에서","od kanceláře"],["Topic","주제","Téma"],["Covered in class","수업 내용","Probráno v hodině"],["Covered:","수업 내용:","Probráno:"],["Latest","최신","Nejnovější"],["edited","수정됨","upraveno"],["resolved","해결됨","vyřešeno"],["Not marked","미표시","Neoznačeno"],
+["Note:","메모:","Poznámka:"],["type to search","검색어 입력","pište pro hledání"],["Search","검색","Hledat"],["Type","종류","Typ"],
+["Add the homework first: write it or add a photo.","먼저 숙제를 추가하세요: 숙제를 쓰거나 사진을 추가하세요.","Nejdřív přidejte úkol: napište ho nebo přidejte fotku."],["Back to Scheduled","다시 ‘예정’으로 돌림","Zpět na Naplánováno"],
+["Couldn't save just now. Check your connection and try again.","지금 저장하지 못했어요. 인터넷 연결을 확인하고 다시 해 보세요.","Teď se to nepodařilo uložit. Zkontrolujte připojení a zkuste to znovu."],["Deleted","삭제됨","Smazáno"],["Removed","삭제됨","Odstraněno"],
+["Everyone not marked is now Here","표시하지 않은 학생을 모두 출석으로 했어요","Všichni neoznačení jsou teď přítomni"],["Homework deleted","숙제 삭제됨","Úkol smazán"],["Note deleted","메모 삭제됨","Poznámka smazána"],
+["It's yours! The lesson is in your week.","수업을 맡았어요! 이번 주 일정에 들어갔어요.","Je vaše! Lekce je ve vašem týdnu."],["OK, thanks for letting us know","알려 주셔서 감사해요","Dobře, děkujeme za informaci"],
+["Payment details copied. Paste them into a message.","결제 정보가 복사됐어요. 메시지에 붙여 넣으세요.","Platební údaje zkopírovány. Vložte je do zprávy."],["Seen ✓","확인 ✓","Viděno ✓"],["Select and copy the text below.","아래 글을 선택해서 복사하세요.","Označte a zkopírujte text níže."],
+["Thank you! School closed.","감사합니다! 학원 마감 완료.","Děkujeme! Škola zamčena."],["Ticked","체크함","Zaškrtnuto"],["Unticked","체크 해제","Odškrtnuto"],
+["Uploading isn't available for this account. Ask the school to upload it.","이 계정으로는 업로드할 수 없어요. 학원에 업로드를 부탁하세요.","Z tohoto účtu nelze nahrávat. Požádejte školu o nahrání."],["Only the person who uploaded it, or the office, can remove it.","올린 사람이나 학원만 지울 수 있어요.","Odstranit to může jen ten, kdo to nahrál, nebo kancelář."],
+["You have view-only access, so changes can't be saved.","보기 권한만 있어서 변경 내용을 저장할 수 없어요.","Máte jen přístup ke čtení, změny nelze uložit."],["You have view-only access.","보기 권한만 있어요.","Máte jen přístup ke čtení."],["Some data couldn't load. Reload the page later.","일부 데이터를 불러오지 못했어요. 나중에 새로고침하세요.","Některá data se nenačetla. Načtěte stránku později znovu."],
+["That lesson was deleted.","그 수업은 삭제됐어요.","Tato lekce byla smazána."],["Click again to delete","한 번 더 누르면 삭제돼요","Klepněte znovu pro smazání"],["Fill in:","입력하세요:","Vyplňte:"],["Preview only — the teacher taps Seen on their own view","미리보기 전용 — 선생님이 자기 화면에서 확인을 눌러요","Jen náhled — učitel klepne na Viděno ve svém zobrazení"],
+["Downloads aren't available in this view.","이 화면에서는 다운로드할 수 없어요.","V tomto zobrazení nelze stahovat."],["Delete homework?","숙제를 삭제할까요?","Smazat úkol?"],["Homework:","숙제:","Úkol:"],["you:","나:","vy:"],["Teacher:","선생님:","Učitel:"],
+];
+const I18N={ko:{},cs:{}};I18N_PAIRS.forEach(([en,ko,cs])=>{I18N.ko[en]=ko;I18N.cs[en]=cs});
+/* same English word, different meaning in the ratings */
+const I18N_RATE={ko:{"Not done":"안 해 옴"},cs:{"Not done":"Neudělaný"}};
+/* page-specific wording (teachers are paid, families pay) */
+const I18N_VIEW={ko:{teacherview:{"Paid":"지급 완료","paid":"지급됨","Not yet":"아직 미지급"}},cs:{teacherview:{"Paid":"Vyplaceno","paid":"vyplaceno"}}};
+const I18N_WD={ko:{Mon:"월",Tue:"화",Wed:"수",Thu:"목",Fri:"금",Sat:"토",Sun:"일"},cs:{Mon:"po",Tue:"út",Wed:"st",Thu:"čt",Fri:"pá",Sat:"so",Sun:"ne"}};
+const I18N_MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],I18N_MF=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const I18N_CSM=["leden","únor","březen","duben","květen","červen","červenec","srpen","září","říjen","listopad","prosinec"];
+function i18nMonth(L,name,year){const i=I18N_MF.indexOf(name);if(i<0)return null;return L==="ko"?(year?year+"년 ":"")+(i+1)+"월":I18N_CSM[i]+(year?" "+year:"")}
+function i18nDay(L,wd,d,mon){const m=I18N_MO.indexOf(mon)+1;return L==="ko"?`${m}월 ${d}일 (${I18N_WD.ko[wd]})`:`${I18N_WD.cs[wd]} ${d}. ${m}.`}
+const MFR=I18N_MF.join("|");
+function czN(n,a,b,c){n=Number(n);return n===1?a:n>=2&&n<=4?b:c}
+const I18N_RX=[
+ [/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) (\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b\.?(.*)$/,(m,L)=>i18nDay(L,m[1],m[2],m[3])+m[4]],
+ [new RegExp("^("+MFR+")(?: (\\d{4}))?$"),(m,L)=>i18nMonth(L,m[1],m[2])],
+ [new RegExp("^(?:"+MFR+")(?:, (?:"+MFR+"))+$"),(m,L)=>m[0].split(", ").map(x=>i18nMonth(L,x)).join(", ")],
+ [/^(\d+) mins?$/,(m,L)=>L==="ko"?m[1]+"분":m[1]+" min"],
+ [/^(\d+) min late$/,(m,L)=>L==="ko"?m[1]+"분 늦음":m[1]+" min zpoždění"],
+ [/^Room (\S+)$/,(m,L)=>L==="ko"?m[1]+" 교실":"Učebna "+m[1]],
+ [/^Hi, (.+)$/,(m,L)=>L==="ko"?`안녕하세요, ${m[1]} ${view==="teacherview"?"선생님":"님"}`:"Dobrý den, "+m[1]],
+ [/^Hello! Here's (.+)'s week$/,(m,L)=>L==="ko"?`${m[1]}의 이번 주`:`Týden: ${m[1]}`],
+ [/^Also taught by (.+)$/,(m,L)=>(L==="ko"?"다른 선생님: ":"Učí také: ")+m[1]],
+ [/^Next: (.+)$/,(m,L,T)=>(L==="ko"?"다음 수업: ":"Další lekce: ")+T(m[1])],
+ [/^from ((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) .+)$/,(m,L,T)=>L==="ko"?T(m[1])+"에서 옮겨짐":"přesunuto z "+T(m[1])],
+ [/^Paid (\d.*)$/,(m,L)=>view==="teacherview"?(L==="ko"?m[1]+" 지급됨":"Vyplaceno "+m[1]):(L==="ko"?m[1]+" 납부됨":"Zaplaceno "+m[1])],
+ [/^(\d+) past lessons? still says? Scheduled\. Please mark what happened\.$/,(m,L)=>L==="ko"?`지난 수업 ${m[1]}개가 아직 ‘예정’ 상태예요. 어떻게 진행됐는지 표시해 주세요.`:`${m[1]} ${czN(m[1],"minulá lekce má","minulé lekce mají","minulých lekcí má")} stále stav „Naplánováno“. Označte prosím, jak proběhly.`],
+ [/^You close the school on (.+?)\.?$/,(m,L,T)=>L==="ko"?`${T(m[1])}에 학원 마감 담당이에요.`:`Školu zamykáte ${T(m[1])}.`],
+ [/^Your last lesson ends at (\d{1,2}:\d\d)\. A checklist will appear here that day\.$/,(m,L)=>L==="ko"?`마지막 수업은 ${m[1]}에 끝나요. 그날 여기에 체크리스트가 나타나요.`:`Vaše poslední lekce končí v ${m[1]}. Ten den se tu objeví kontrolní seznam.`],
+ [/^after your lesson ends at (\d{1,2}:\d\d)$/,(m,L)=>L==="ko"?`${m[1]} 수업이 끝난 후`:`po skončení vaší lekce v ${m[1]}`],
+ [/^Your last lesson ends at$/,(m,L)=>L==="ko"?"마지막 수업 종료:":"Vaše poslední lekce končí v"],
+ [/^Lessons carried over: (\d+)$/,(m,L)=>(L==="ko"?"이월된 수업: ":"Převedené lekce: ")+m[1]],
+ [/^(\d+) here$/,(m,L)=>L==="ko"?m[1]+"명 출석":"přítomno: "+m[1]],
+ [/^(\d+) not marked$/,(m,L)=>L==="ko"?m[1]+"명 미표시":"neoznačeno: "+m[1]],
+ [/^(\d+) of (\d+) here$/,(m,L)=>L==="ko"?`${m[2]}명 중 ${m[1]}명 출석`:`přítomno ${m[1]} z ${m[2]}`],
+ [/^absent: (.+)$/,(m,L)=>(L==="ko"?"결석: ":"nepřítomni: ")+m[1]],
+ [/^(\d+) lessons? \((.+) this month\)$/,(m,L)=>{const d=m[2].split(" + ").map(x=>I18N_WD[L][x]||x).join(" + ");return L==="ko"?`이번 달 수업 ${m[1]}회 (${d})`:`${m[1]} ${czN(m[1],"lekce","lekce","lekcí")} (${d} tento měsíc)`}],
+ [/^(\d+) lessons? ([×−-] .+)$/,(m,L)=>L==="ko"?`수업 ${m[1]}회 ${m[2]}`:`${m[1]} ${czN(m[1],"lekce","lekce","lekcí")} ${m[2]}`],
+ [/^(\d+) lessons?$/,(m,L)=>L==="ko"?`수업 ${m[1]}회`:`${m[1]} ${czN(m[1],"lekce","lekce","lekcí")}`],
+ [/^invoice to (.+)$/,(m,L)=>L==="ko"?m[1]+"에 청구":"faktura pro "+m[1]],
+ [new RegExp("^Missed in ("+MFR+")(.*)$"),(m,L,T)=>{const r=m[2].replace(/\(([^)]*)\)/,(a,x)=>"("+x.split(", ").map(y=>T(y)).join(", ")+")");return L==="ko"?`${i18nMonth(L,m[1])}에 빠진 수업${r}`:`Zmeškáno (${i18nMonth(L,m[1])})${r}`}],
+ [new RegExp("^How the fee for ("+MFR+") was worked out$"),(m,L)=>L==="ko"?`${i18nMonth(L,m[1])} 수업료 계산 내역`:`Jak jsme spočítali poplatek za ${i18nMonth(L,m[1])}`],
+ [new RegExp("^Fee for ("+MFR+")$"),(m,L)=>L==="ko"?`${i18nMonth(L,m[1])} 수업료`:`Poplatek za ${i18nMonth(L,m[1])}`],
+ [/^(\d+) years old$/,(m,L)=>L==="ko"?m[1]+"세":m[1]+" let"],
+ [/^Show older \((\d+)\)$/,(m,L)=>(L==="ko"?"이전 항목 보기 (":"Zobrazit starší (")+m[1]+")"],
+ [/^Your mark “(.+)” will be removed, as if you hadn't marked the lesson yet\. Homework and notes stay\.$/,(m,L,T)=>L==="ko"?`‘${T(m[1])}’ 표시가 지워지고, 아직 표시하지 않은 상태로 돌아가요. 숙제와 메모는 그대로 남아요.`:`Označení „${T(m[1])}“ bude odstraněno, jako byste lekci ještě neoznačili. Úkol a poznámky zůstanou.`],
+ [/^(Attitude|Homework): (.+)$/,(m,L,T)=>T(m[1])+": "+T(m[2],"rate")],
+ [/^Homework needed again for (.+)$/,(m,L)=>L==="ko"?`${m[1]}에게 다시 숙제가 필요해요`:`${m[1]} zase potřebuje úkoly`],
+ [/^see homework, notes and books from (.+?)( ›)?$/,(m,L)=>(L==="ko"?`${m[1]}의 숙제, 메모, 교재 보기`:`zobrazit úkoly, poznámky a učebnice od: ${m[1]}`)+(m[2]||"")],
+ [/^is what the school recorded as paid, before (\d+)% tax\. If something doesn't match, please contact the office\.$/,(m,L)=>L==="ko"?`— 학원에서 지급한 것으로 기록된 금액이에요 (세금 ${m[1]}% 공제 전). 맞지 않는 부분이 있으면 학원에 연락해 주세요.`:`– částka, kterou škola zaznamenala jako vyplacenou, před ${m[1]}% daní. Pokud něco nesedí, kontaktujte prosím kancelář.`],
+ [/^(\d+) school reports? added$/,(m,L)=>L==="ko"?`학교 성적표 ${m[1]}개 추가됨`:`přidaná vysvědčení: ${m[1]}`],
+ [/^Marked: (.+)$/,(m,L,T)=>(L==="ko"?"표시함: ":"Označeno: ")+T(m[1])],
+ [/^Please rate first: (.+)$/,(m,L,T)=>(L==="ko"?"먼저 평가해 주세요: ":"Nejdřív prosím ohodnoťte: ")+m[1].split(" and ").map(x=>T(x)).join(L==="ko"?", ":" a ")],
+ [/^Saved: (\d+) min late$/,(m,L)=>L==="ko"?`저장됨: ${m[1]}분 늦음`:`Uloženo: ${m[1]} min zpoždění`],
+ [/^(.+): note saved$/,(m,L)=>L==="ko"?`${m[1]}: 메모 저장됨`:`${m[1]}: poznámka uložena`],
+ [/^(.+) doesn't need homework$/,(m,L)=>L==="ko"?`${m[1]}: 숙제 필요 없음`:`${m[1]} nepotřebuje úkoly`],
+ [/^Couldn't turn on notifications: (.+)$/,(m,L)=>(L==="ko"?"알림을 켜지 못했어요: ":"Oznámení se nepodařilo zapnout: ")+m[1]],
+ [/^Everyone who teaches (.+) can read this note\. Problems also go to the office\.$/,(m,L)=>L==="ko"?`${m[1]}을(를) 가르치는 모든 선생님이 이 메모를 볼 수 있어요. 문제는 학원에도 전달돼요.`:`Tuto poznámku si může přečíst každý, kdo učí ${m[1]}. Problémy jdou i do kanceláře.`],
+ [/^Taught instead by (.+)$/,(m,L)=>(L==="ko"?"대신 수업한 선생님: ":"Místo vás učil(a) ")+m[1]],
+ [/^covering for (.+)$/,(m,L)=>L==="ko"?`${m[1]} 선생님 대신 수업`:`zástup za ${m[1]}`],
+];
+function i18nKey(){return view}
+function trS(t,L,ctx,depth){const r=trS0(t,L,ctx,depth);return r==null?r:r.replace(/\.\.+$/,".")}
+function trS0(t,L,ctx,depth){depth=depth||0;if(depth>5||!t)return null;
+  const D=I18N[L];if(!D)return null;const V=(I18N_VIEW[L]||{})[i18nKey()]||{};
+  if(ctx==="rate"&&I18N_RATE[L][t])return I18N_RATE[L][t];
+  if(V[t]!=null)return V[t];if(D[t]!=null)return D[t];
+  const T=(x,c)=>{const r=trS(x,L,c||ctx,depth+1);return r==null?x:r};
+  if(t.includes(" · ")){let ch=false;const out=t.split(" · ").map(p=>{const r=trS(p,L,ctx,depth+1);if(r!=null){ch=true;return r}return p});if(ch)return out.join(" · ")}
+  let m=t.match(/^(✓|↺|↩|🔔|·|—|–|•|📢|⚠️?|!)\s*(.+)$/u);if(m){const r=trS(m[2],L,ctx,depth+1);if(r!=null)return m[1]+" "+r}
+  m=t.match(/^(.+?)\s*(:| ✓| ›| ▾|\.| \*)$/);if(m){const r=trS(m[1],L,ctx,depth+1);if(r!=null)return r+(m[2]===":"||m[2]==="."?m[2]:" "+m[2].trim())}
+  for(const [rx,fn] of I18N_RX){const mm=t.match(rx);if(mm){const r=fn(mm,L,T);if(r!=null)return r}}
+  return null}
+
+const TEACHER_GUIDE_KO=`<article class="tv-guide" data-noi18n>
+<p class="tg-lead">이 페이지는 앱에서 할 수 있는 모든 것을 설명해요. 핵심만 말하면: <b>매일 ‘이번 주’를 확인하고, 새로운 내용에는 ‘확인’을 누르고, 수업한 날 모든 수업을 표시해 주세요.</b></p>
+
+<div class="tg-box"><div class="tg-bh">✅ 매일 할 일</div><ol>
+<li><b>이번 주</b>를 엽니다.</li>
+<li>맨 위의 새 소식(일정 변경, 학원 메모, 답장)을 읽고 바로 <b>확인</b>을 누릅니다.</li>
+<li>수업이 끝나면 수업 카드를 작성합니다: <b>숙제 → 학생은 어땠는지 → 지각? → 수업 표시</b>.</li>
+<li>건물에서 마지막으로 나가는 선생님이라면 <b>학원 마감</b> 체크리스트를 체크합니다.</li>
+</ol></div>
+
+<h2><span class="tg-n">1</span> ‘이번 주’ 맨 위의 알림</h2>
+<p>무언가 바뀌면 <b>이번 주</b> 맨 위에 색깔 상자가 나타나요. <b>보자마자</b> 읽고 버튼을 눌러 주세요. 그래야 학원에서 선생님이 확인한 걸 알 수 있어요.</p>
+<ul class="tg-list">
+<li><b>일정이 바뀌었어요</b> — 수업 시간, 요일, 교실이 바뀌었거나 새 수업이 추가됐어요. 이전 시간에는 줄이 그어지고 새 시간은 그 아래에 있어요. <b>확인</b>을 누르세요. 새 시간에 수업이 어려우면 최대한 빨리 학원에 알려 주세요.</li>
+<li><b>일정 변경 · 무시해 주세요</b> — 수업이 취소됐거나, 다음 달로 옮겨졌거나, 보강으로 바뀌었거나, 다른 선생님께 넘어갔어요. 그 수업에는 오지 마세요. <b>확인</b>을 누르세요.</li>
+<li><b>학원에서 온 새 메모</b> — 학생에 대해 알아야 할 내용이에요. <b>확인했어요</b>를 누르세요. 반응(👍 ❤️ ✅ 👀)을 남기거나 <b>답장</b>할 수도 있어요.</li>
+<li><b>내 메모에 새 답장</b> — 누군가 선생님이 쓴 메모나 숙제에 답했어요. <b>확인했어요</b>를 누르세요.</li>
+<li><b>새 수업 제안</b> — 8번을 보세요.</li>
+</ul>
+<p class="tg-tip">💡 일정 변경에 ‘확인’을 누르지 않으면 학원에 알림이 가고, 학원에서 전화할 수도 있어요.</p>
+
+<h2><span class="tg-n">2</span> 한눈에 보는 한 주</h2>
+<ul class="tg-list">
+<li>표에는 이번 주 수업이 나와요. <b>위쪽이 아침, 아래쪽이 저녁</b>이에요. ‹ › 로 주를 바꿀 수 있어요.</li>
+<li>각 칸에는 <b>시작 ~ 끝 시간</b>, <b>교실 글자</b>(A, B, C…), 학생 이름이 있어요. 색깔은 교실 색이에요.</li>
+<li><b>한 주 전체</b>는 한 화면에 모두 보여 줘요. <b>크게 보기</b>는 칸이 커지고 옆으로 넘겨 볼 수 있어요.</li>
+<li>초록색 <b>✓</b>는 ‘완료’로 표시한 수업, 주황색 <b>!</b>는 다른 결과로 표시한 수업이에요. <s>줄이 그어진</s> 칸은 취소되거나 옮겨진 수업이에요.</li>
+<li><b>수업을 누르면</b> 그 수업 카드로 바로 이동해요.</li>
+</ul>
+
+<h2><span class="tg-n">3</span> 수업이 끝나면 — 카드 작성</h2>
+<p>주간 표 아래 <b>표시할 수업</b>에 오늘 수업과 아직 표시하지 않은 수업이 나와요. 수업마다 카드가 있어요. 위에서 아래로 작성하세요:</p>
+<ol class="tg-steps">
+<li><b>숙제.</b> 숙제를 쓰거나 <b>+ 사진 또는 파일</b>을 눌러 교재 페이지 사진이나 PDF를 추가하세요.<br><span class="tg-small">어린이 학생은 숙제가 꼭 필요해요 — 숙제를 추가해야 <b>완료</b>를 누를 수 있어요. 성인 학생이 숙제를 원하지 않으면 <b>이 학생은 숙제 없음</b>을 한 번 누르세요. 그 학생의 모든 수업에 적용돼요.</span></li>
+<li><b>학생은 어땠나요?</b> <i>오늘 수업 태도</i>와 <i>지난 수업 숙제</i>를 평가하세요.<br><span class="tg-small"><b>어린이</b>는 평가가 꼭 필요해요 — 평가해야 <b>완료</b>를 누를 수 있어요. 성인은 선택이에요.</span></li>
+<li><b>메모 및 기타.</b>
+  <ul><li>지각이 있었다면 <b>학생이 늦음</b> 또는 <b>내가 늦음</b>을 체크하고, 나타나는 칸에 <b>몇 분 늦었는지</b> 입력하세요.</li>
+  <li>알려야 할 내용이 있으면 학원과 이 학생의 다른 선생님께 메모를 남기세요.</li></ul></li>
+<li><b>수업 표시</b> — 초록색 <b>완료</b>를 누르세요. 수업이 평소처럼 진행되지 않았다면 <b>기타 ▾</b>를 누르고 선택하세요:
+  <table class="tg-tbl"><tbody>
+  <tr><td><b>완료</b></td><td>수업이 진행됐어요.</td></tr>
+  <tr><td><b>학생 무단 불참</b></td><td>학생이 아무 말 없이 오지 않았어요.</td></tr>
+  <tr><td><b>학생 사전 취소</b></td><td>학생이 미리 취소했어요.</td></tr>
+  <tr><td><b>선생님 결근</b></td><td>선생님이 아프거나 올 수 없었어요.</td></tr>
+  <tr><td><b>진행 안 됨</b></td><td>다른 이유로 수업이 없었어요 (예: 학원에서 취소).</td></tr>
+  <tr><td><b>기타</b></td><td>그 밖의 경우 — 먼저 메모에 무슨 일이 있었는지 써 주세요.</td></tr>
+  </tbody></table></li>
+</ol>
+<p>그러면 카드가 짧은 요약으로 접혀요.</p>
+
+<h2><span class="tg-n">4</span> 실수 고치기</h2>
+<ul class="tg-list">
+<li>수업에서 <b>수정</b>을 누르세요 (지난 수업은 <b>내 수업</b>에서). 숙제, 메모, 평가를 바꾸고 <b>변경 저장</b>을 누르세요.</li>
+<li>결과를 바꾸려면 다른 버튼을 누르세요 (예: <i>완료</i> → <i>학생 사전 취소</i>).</li>
+<li>버튼 아래의 <b>표시 초기화</b>는 표시를 완전히 지워서, 아직 표시하지 않은 상태로 돌려요. 숙제와 메모는 그대로 남아요.</li>
+<li>이미 표시한 수업을 바꾸면 학원에 알림이 가요.</li>
+</ul>
+
+<h2><span class="tg-n">5</span> 표시 규칙</h2>
+<ul class="tg-list">
+<li><b>수업한 날 바로 표시하세요.</b> 수업이 끝났는데도 표시하지 않으면 학원에 <i>아직 표시 안 됨</i>으로 보여요.</li>
+<li><b>실제로 있었던 일을 표시하세요.</b> 지각과 몇 분 늦었는지도 포함해서요.</li>
+<li><b>선생님의 표시는 시간표를 바꾸지 않아요.</b> 수업을 옮기거나 취소하는 건 학원만 할 수 있어요. 바꿔야 할 게 있으면 학원에 알려 주세요.</li>
+</ul>
+
+<h2><span class="tg-n">6</span> 메모, 답장, 반응</h2>
+<ul class="tg-list">
+<li><b>내 학생</b>에서 <b>메모 추가</b>를 눌러 학생에 대해 쓰세요. <i>다른 선생님께 남기는 메모</i>를 고르거나, 학원이 조치해야 하면 <i>문제</i>를 고르세요.</li>
+<li>그 학생을 가르치는 모든 선생님이 메모를 읽을 수 있어요. 선생님들과 학원이 <b>답장</b>하고 <b>반응</b>을 남길 수 있어요.</li>
+<li>내가 쓴 메모와 숙제는 언제든 <b>수정하거나 삭제</b>할 수 있어요. 다른 선생님의 메모에는 답장만 할 수 있어요.</li>
+</ul>
+
+<h2><span class="tg-n">7</span> 다른 탭</h2>
+<ul class="tg-list">
+<li><b>내 수업</b> — 모든 수업을 주별로 보여 줘요. 지난 수업을 다시 보거나 고칠 때 쓰세요.</li>
+<li><b>내 학생</b> — 내가 가르치는 모든 학생과, <i>모든</i> 선생님과 학원이 남긴 숙제와 메모. 여기서 <b>교재 진도</b>(<i>시작함, 절반, 거의 끝남, 완료</i>)를 정하세요. 학부모님도 볼 수 있어요.</li>
+<li><b>근무 시간</b> — 주별 수업 시간(분)과 급여. <b>‘완료’로 표시한 수업만</b> 계산돼요. 무단 불참, 사전 취소, 선생님 결근, 진행 안 됨, 기타는 계산되지 않아요. 마지막 열에서 그 주가 <i>지급 완료</i>인지 <i>아직 미지급</i>인지 볼 수 있어요.</li>
+</ul>
+<p class="tg-tip">💡 <b>새 학생인가요?</b> 카드에 주황색 버튼이 보여요. 수업 전에 눌러서 이전 선생님들이 무엇을 했는지 보세요. 다른 선생님 수업을 대신할 때는 카드에 <i>대신 수업</i>과 그 선생님 이름이 나와요 — 내 수업처럼 표시하면 되고, 급여는 나에게 들어와요.</p>
+
+<h2><span class="tg-n">8</span> 추가 수업 제안</h2>
+<p>학원에서 가끔 여러 선생님께 동시에 수업을 제안해요. <b>이번 주</b> 맨 위에 나타나요. <b>제가 할게요</b> 또는 <b>못 해요</b>를 누르세요. 가장 먼저 수락한 선생님이 수업을 맡고, 다른 선생님들에게는 <i>이미 다른 선생님이 맡았어요</i>로 바뀌어요.</p>
+
+<h2><span class="tg-n">9</span> 학원 마감</h2>
+<p>그날 교실 수업이 가장 늦게 끝나는 선생님이 학원 문을 닫아요. 내가 담당이면 마지막 수업 아래에 <b>학원 마감</b> 체크리스트가 나타나요: 난방, 불, 화장실, 창문, 문. 나가기 전에 하나씩 체크하세요.</p>
+<p>다른 선생님이 더 늦게 남아 있으면 <b>다른 선생님께 마감 넘기기</b>를 눌러 그 선생님을 고르세요.</p>
+
+<div class="tg-box tg-help"><b>문제가 있거나 잘 모르겠나요?</b> 언제든 학원에 연락해 주세요 — 기꺼이 도와드릴게요. 매일 수업을 표시해 주셔서 감사합니다!</div>
+</article>`;
+const TEACHER_GUIDE_CS=`<article class="tv-guide" data-noi18n>
+<p class="tg-lead">Tato stránka vysvětluje vše, co v aplikaci můžete dělat. Ve zkratce: <b>každý den se podívejte do Můj týden, u všeho nového klepněte na Viděno a každou lekci označte ještě ten den, kdy ji učíte.</b></p>
+
+<div class="tg-box"><div class="tg-bh">✅ Každý den</div><ol>
+<li>Otevřete <b>Můj týden</b>.</li>
+<li>Přečtěte si vše nové nahoře (změny rozvrhu, poznámky od kanceláře, odpovědi) a hned klepněte na <b>Viděno</b> / <b>OK</b>.</li>
+<li>Po každé lekci vyplňte její kartu: <b>úkol → jak se studentovi dařilo → zpoždění? → označit lekci</b>.</li>
+<li>Pokud odcházíte z budovy poslední, odškrtněte seznam <b>Zamykání školy</b>.</li>
+</ol></div>
+
+<h2><span class="tg-n">1</span> Upozornění nahoře v Můj týden</h2>
+<p>Když se něco změní, objeví se nahoře v <b>Můj týden</b> barevný rámeček. Přečtěte si ho prosím a klepněte na tlačítko <b>hned, jak ho uvidíte</b> — tak kancelář ví, že jste zprávu dostali.</p>
+<ul class="tg-list">
+<li><b>Rozvrh se změnil</b> — lekce má nový čas, den nebo učebnu, nebo vám přibyla nová lekce. Starý čas je přeškrtnutý, nový je pod ním. Klepněte na <b>Viděno</b>. Pokud v novém čase nemůžete, dejte prosím co nejdříve vědět kanceláři.</li>
+<li><b>Změny rozvrhu · prosím ignorujte</b> — lekce byla zrušena, přesunuta na další měsíc, změněna na náhradní lekci nebo předána jinému učiteli. Nechoďte na ni. Klepněte na <b>OK</b>.</li>
+<li><b>Nové poznámky od kanceláře</b> — něco, co byste měli vědět o studentovi. Klepněte na <b>OK, viděno</b>. Můžete také reagovat (👍 ❤️ ✅ 👀) nebo klepnout na <b>Odpovědět</b>.</li>
+<li><b>Nové odpovědi na vaše poznámky</b> — někdo odpověděl na vaši poznámku nebo úkol. Klepněte na <b>OK, viděno</b>.</li>
+<li><b>Nová nabídka lekce</b> — viz bod 8.</li>
+</ul>
+<p class="tg-tip">💡 Pokud u změny rozvrhu neklepnete na Viděno, kancelář dostane připomínku a může vám zavolat.</p>
+
+<h2><span class="tg-n">2</span> Váš týden na první pohled</h2>
+<ul class="tg-list">
+<li>Tabulka ukazuje vaše lekce v týdnu, <b>ráno nahoře, večer dole</b>. Týden změníte pomocí ‹ ›.</li>
+<li>Každé políčko ukazuje <b>začátek ~ konec</b>, <b>písmeno učebny</b> (A, B, C…) a studenta. Barva je barva učebny.</li>
+<li><b>Celý týden</b> se vejde na jednu obrazovku. <b>Větší</b> ukazuje větší políčka, která můžete posouvat do strany.</li>
+<li>Zelené <b>✓</b> znamená, že jste lekci označili Hotovo. Oranžový <b>!</b> znamená jiné označení. <s>Přeškrtnuté</s> políčko je zrušená nebo přesunutá lekce.</li>
+<li><b>Klepnutím na lekci</b> přejdete na její kartu.</li>
+</ul>
+
+<h2><span class="tg-n">3</span> Po každé lekci — vyplňte kartu</h2>
+<p>Pod tabulkou týdne jsou v <b>K označení</b> dnešní lekce a ty, které jste ještě neoznačili. Každá lekce má kartu. Postupujte shora dolů:</p>
+<ol class="tg-steps">
+<li><b>Úkol.</b> Napište ho a/nebo klepněte na <b>+ Fotka nebo soubor</b> a přidejte fotku nebo PDF stránky.<br><span class="tg-small">U dětí je úkol povinný — <b>Hotovo</b> funguje až po jeho přidání. Pokud dospělý úkoly nechce, klepněte jednou na <b>Tento student nemá úkoly</b>; platí to pro všechny jeho lekce.</span></li>
+<li><b>Jak se studentovi dařilo?</b> Ohodnoťte <i>Dnes v hodině</i> a <i>Úkol z minulé lekce</i>.<br><span class="tg-small">U <b>dětí</b> je to povinné — <b>Hotovo</b> funguje až po ohodnocení. U dospělých je to nepovinné.</span></li>
+<li><b>Poznámky a další.</b>
+  <ul><li>Pokud se to stalo, zaškrtněte <b>Student přišel pozdě</b> nebo <b>Přišel(a) jsem pozdě</b> a do políčka, které se objeví, <b>napište počet minut</b>.</li>
+  <li>Pokud je něco potřeba vědět, napište poznámku pro kancelář a ostatní učitele studenta.</li></ul></li>
+<li><b>Označte lekci</b> — klepněte na zelené <b>Hotovo</b>. Pokud lekce neproběhla normálně, klepněte na <b>Něco jiného ▾</b> a vyberte:
+  <table class="tg-tbl"><tbody>
+  <tr><td><b>Hotovo</b></td><td>Lekce proběhla.</td></tr>
+  <tr><td><b>Student nepřišel</b></td><td>Student nepřišel a nikomu nic neřekl.</td></tr>
+  <tr><td><b>Student omluven</b></td><td>Student lekci předem zrušil.</td></tr>
+  <tr><td><b>Učitel chyběl</b></td><td>Byli jste nemocní nebo jste nemohli přijít.</td></tr>
+  <tr><td><b>Neproběhlo</b></td><td>Lekce se nekonala z jiného důvodu (např. ji zrušila škola).</td></tr>
+  <tr><td><b>Jiné</b></td><td>Cokoli jiného — nejdřív do poznámky napište, co se stalo.</td></tr>
+  </tbody></table></li>
+</ol>
+<p>Karta se pak zavře do krátkého shrnutí.</p>
+
+<h2><span class="tg-n">4</span> Oprava chyby</h2>
+<ul class="tg-list">
+<li>Klepněte u lekce na <b>Upravit</b> (starší lekce najdete v <b>Moje lekce</b>). Změňte úkol, poznámky nebo hodnocení a klepněte na <b>Uložit změny</b>.</li>
+<li>Výsledek změníte klepnutím na jiné tlačítko (např. z <i>Hotovo</i> na <i>Student omluven</i>).</li>
+<li><b>Zrušit označení</b> (pod tlačítky) vaše označení úplně odstraní, jako byste lekci ještě neoznačili. Úkol a poznámky zůstanou.</li>
+<li>Kancelář dostane zprávu, když změníte něco na lekci, kterou jste už označili.</li>
+</ul>
+
+<h2><span class="tg-n">5</span> Pravidla označování</h2>
+<ul class="tg-list">
+<li><b>Označujte ve stejný den.</b> Lekce, která po skončení stále není označená, se kanceláři ukazuje jako <i>zatím neoznačená</i>.</li>
+<li><b>Označte, co se opravdu stalo</b>, včetně zpoždění a o kolik minut.</li>
+<li><b>Vaše označení nemění rozvrh.</b> Lekce přesouvá nebo ruší jen kancelář. Pokud je potřeba něco změnit, řekněte to kanceláři.</li>
+</ul>
+
+<h2><span class="tg-n">6</span> Poznámky, odpovědi a reakce</h2>
+<ul class="tg-list">
+<li>V <b>Moji studenti</b> klepněte na <b>Přidat poznámku</b> a napište o studentovi. Vyberte <i>Poznámka pro ostatní učitele</i>, nebo <i>Problém</i>, pokud musí jednat kancelář.</li>
+<li>Poznámku si může přečíst každý, kdo studenta učí. Učitelé i kancelář mohou <b>odpovědět</b> a <b>reagovat</b>.</li>
+<li><b>Své vlastní</b> poznámky a úkoly můžete kdykoli <b>upravit nebo smazat</b>. Na poznámky ostatních učitelů můžete jen odpovědět.</li>
+</ul>
+
+<h2><span class="tg-n">7</span> Ostatní záložky</h2>
+<ul class="tg-list">
+<li><b>Moje lekce</b> — všechny lekce, týden po týdnu. Slouží k ohlédnutí zpět nebo opravě starších lekcí.</li>
+<li><b>Moji studenti</b> — všichni, které učíte, s úkoly a poznámkami od <i>všech</i> jejich učitelů a kanceláře. Tady nastavujete <b>postup v učebnici</b> (<i>Začato, V polovině, Skoro hotovo, Hotovo</i>); rodiče ho vidí.</li>
+<li><b>Moje hodiny</b> — vaše minuty a výplata po týdnech. Počítají se <b>jen lekce označené Hotovo</b>. Nepřišel, omluven, učitel chyběl, neproběhlo a jiné se nepočítají. Poslední sloupec ukazuje, zda je týden <i>Vyplaceno</i> nebo <i>Zatím ne</i>.</li>
+</ul>
+<p class="tg-tip">💡 <b>Nový student?</b> Karta ukazuje oranžové tlačítko. Klepněte na něj před lekcí a uvidíte, co dělali předchozí učitelé. Když za někoho zaskakujete, na kartě je <i>zástup za</i> a jeho jméno — označte ji jako svou vlastní lekci; výplata jde vám.</p>
+
+<h2><span class="tg-n">8</span> Nabídky lekcí navíc</h2>
+<p>Kancelář někdy nabídne lekci několika učitelům najednou. Objeví se nahoře v <b>Můj týden</b>. Klepněte na <b>Vezmu si ji</b> nebo <b>Nemůžu</b>. Lekci dostane první učitel, který ji přijme; ostatním se změní na <i>Už je obsazeno</i>.</p>
+
+<h2><span class="tg-n">9</span> Zamykání školy</h2>
+<p>Školu zamyká učitel, jehož poslední lekce v učebně ten den končí nejpozději. Pokud jste to vy, pod vaší poslední lekcí se objeví seznam <b>Zamykání školy</b>: topení, světla, toaleta, okna, dveře. Před odchodem každou položku odškrtněte.</p>
+<p>Pokud zůstává déle někdo jiný, použijte <b>Předat zamykání jinému učiteli</b> a vyberte jeho jméno.</p>
+
+<div class="tg-box tg-help"><b>Něco nefunguje nebo není jasné?</b> Kontaktujte prosím kancelář — rádi pomůžeme. Děkujeme, že každý den označujete své lekce!</div>
+</article>`;
+
+function uiLang(){let r="";
+  if(view==="teacherview"){const t=S.teachers[tvTeacher];r=t&&t.lang}
+  else if(view==="studentview"){const s=S.students[svStudent];r=s&&s.lang}
+  else if(view==="parentview"){const s=S.students[pvKid];r=s&&(s.parentLang||s.lang)}
+  return I18N[r]?r:"en"}
+function langSw(){const cur=uiLang();return `<div class="lang-sw" data-noi18n role="group" aria-label="Language / 언어 / Jazyk">${LANGS.map(([k,l])=>`<button type="button" data-setlang="${k}" aria-pressed="${k===cur}">${l}</button>`).join("")}</div>`}
+async function setLang(v){v=v==="en"?"":v;
+  if(view==="teacherview"&&tvTeacher)await patch("teachers",tvTeacher,{lang:v});
+  else if(view==="studentview"&&svStudent)await patch("students",svStudent,{lang:v});
+  else if(view==="parentview"){const f=families().find(x=>x.k===pvFam);for(const k of (f?f.kids:[]))await patch("students",k.id,{parentLang:v||"en"})}
+  try{localStorage.setItem("wa_lang",v||"en")}catch(e){}render()}
+const I18N_SCOPE="#main,#modal-root,.toast,#wa-who";
+function i18nSkip(el){return !el||el.closest("[data-noi18n],.tv-preview,script,style,textarea,[contenteditable]")||!el.closest(I18N_SCOPE)}
+function i18nSkipA(el){return !el||el.closest("[data-noi18n],.tv-preview")||!el.closest(I18N_SCOPE)}
+function i18nText(n,L){const raw=n.nodeValue;if(!raw||!/[A-Za-z]/.test(raw))return;const el=n.parentElement;if(i18nSkip(el))return;
+  const t=raw.replace(/\s+/g," ").trim();const r=trS(t,L,el.closest(".rate-row,.rate,.rate-btn")?"rate":"");
+  if(r!=null&&r!==t)n.nodeValue=(raw.match(/^\s*/)[0])+r+(raw.match(/\s*$/)[0])}
+function i18nAttrs(el,L){for(const a of ["placeholder","title","aria-label"]){const v=el.getAttribute(a);if(v&&/[A-Za-z]/.test(v)){const r=trS(v.trim(),L,"");if(r!=null&&r!==v)el.setAttribute(a,r)}}}
+function i18nWalk(root,L){if(root.nodeType===3){i18nText(root,L);return}if(root.nodeType!==1)return;
+  const scoped=root.matches&&(root.matches(I18N_SCOPE)||root.closest(I18N_SCOPE));
+  const roots=scoped?[root]:[...root.querySelectorAll(I18N_SCOPE)];
+  for(const r of roots){if(r.closest&&r.closest("[data-noi18n]"))continue;
+    const w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT);let n;const list=[];while(n=w.nextNode())list.push(n);list.forEach(x=>i18nText(x,L));
+    [r,...r.querySelectorAll("[placeholder],[title],[aria-label]")].forEach(e=>{if(e.getAttribute&&!i18nSkipA(e))i18nAttrs(e,L)})}}
+let i18nObs=null,i18nCur="en";
+function i18nSync(){const L=uiLang();i18nCur=L;document.documentElement.lang=L==="en"?"en":L;
+  if(L==="en"){if(i18nObs){i18nObs.disconnect();i18nObs=null}return}
+  if(lock)try{localStorage.setItem("wa_lang",L)}catch(e){}
+  i18nWalk(document.body,L);
+  if(!i18nObs){i18nObs=new MutationObserver(ms=>{const L2=i18nCur;if(L2==="en")return;for(const m of ms){if(m.type==="characterData")i18nText(m.target,L2);else if(m.type==="attributes"){if(!i18nSkipA(m.target))i18nAttrs(m.target,L2)}else m.addedNodes.forEach(n=>i18nWalk(n,L2))}});
+    i18nObs.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["placeholder","title","aria-label"]})}}
+function teacherGuide(){const L=uiLang();return L==="ko"?TEACHER_GUIDE_KO:L==="cs"?TEACHER_GUIDE_CS:TEACHER_GUIDE}
+
 /* ---------- teacher reports (everything except Done) ---------- */
 function needsAction(l){const t=tst(l);if(t==="scheduled"||t==="done")return false;return l.actHandled!==t}
 function actionList(){return arr("lessons").filter(needsAction).sort((a,b)=>(a.date+(a.time||"")).localeCompare(b.date+(b.time||"")))}
@@ -3304,16 +3698,16 @@ function vReports(){
   <h2${RV.length?' style="margin-top:22px"':""}>Decide what happens <span class="chip ${A.length?"warn":"good"}">${A.length}</span></h2>
   ${A.length?`<div class="ar-list">${A.map(l=>{const t=tst(l);return `<article class="ar-card">
     <div class="ar-top"><span class="st ${esc(t==="excused"?"t-excused":(TMAP[t]||t))} tm-pill">${esc(tLabel(t))}</span><b>${esc(dLabel(l.date))} ${esc(l.time||"")}</b><span class="ar-stu">${esc(nm("students",l.studentId))}</span><span class="ar-tea">${esc(nm("teachers",payTeacher(l)))}</span>${l.status!=="scheduled"?`<span class="muted">· you: ${esc(stLabel(l.status))}</span>`:""}</div>
-    ${l.lessonNote?`<div class="ar-note">“${esc(l.lessonNote)}”</div>`:""}
+    ${l.lessonNote?`<div class="ar-note">“<span data-noi18n>${esc(l.lessonNote)}</span>”</div>`:""}
     <p class="muted ar-help">${l.actAs==="excused"&&t==="absent"?"You said the student was excused. "+esc(ACT_HELP.excused):esc(ACT_HELP[t]||"")}</p>
     ${canWrite?`<div class="tools">${l.status!=="scheduled"&&tMatches(t,l.status)?`<button type="button" class="btn sm pri" data-act="${esc(l.id)}|ok">Already handled ✓</button>`:""}${actButtons(l)}</div>`:""}</article>`}).join("")}</div>`:`<div class="panel empty">Nothing to decide.</div>`}
   ${(()=>{const P=openProblems();return P.length?`<h2 style="margin-top:22px">Problems from teachers <span class="chip bad">${P.length}</span></h2><p class="muted" style="margin:-6px 0 8px;font-size:13px">Stay here until you mark them resolved.</p><div class="ar-list">${P.map(n=>{const R=n.replies||[],last=R[R.length-1],fresh=!n.seen||(last&&last.by!=="office"&&n.replyOfficeSeen===false);return `<article class="ar-card ar-prob${fresh?" fresh":""}"><div class="ar-top">${fresh?`<span class="chip bad">New</span>`:""}<b>⚠ ${esc(nm("students",n.studentId))}</b><span class="muted">· ${esc(nm("teachers",n.teacherId))} · ${esc(noteTime(n))}${n.editedAt?" · edited":""}</span></div>
-    <div class="ar-note">${esc(n.text)}</div>${noteSocial("notes",n)}
+    <div class="ar-note"><span data-noi18n>${esc(n.text)}</span></div>${noteSocial("notes",n)}
     ${canWrite?`<div class="tools"><button type="button" class="btn sm pri" data-resolve="${esc(n.id)}">Mark resolved</button>${fresh?`<button type="button" class="btn sm" data-pseen="${esc(n.id)}">Seen ✓</button>`:""}<button type="button" class="btn sm ghost danger-t" data-ndel="${esc(n.id)}">Delete</button></div>`:""}</article>`}).join("")}</div>`:""})()}
   <h2 style="margin-top:22px">To read <span class="chip ${I.length?"warn":"good"}">${I.length}</span></h2>
   ${I.length?`<div class="ar-list">${I.map(x=>`<article class="ar-card ar-info"><div class="ar-top"><b>${esc(x.title)}</b>${x.l?`<span class="muted">· ${esc(dLabel(x.l.date))} ${esc(x.l.time||"")}</span><span class="ar-stu">${esc(nm("students",x.l.studentId))}</span><span class="ar-tea">${esc(nm("teachers",payTeacher(x.l)))}</span>`:""}</div>
     ${x.text?`<div class="ar-note">${esc(x.text)}</div>`:""}${x.html||""}
-    ${x.k==="snote"?noteSocial("notes",S.notes[x.id]):x.k==="note"?noteSocial("lessons",x.l):x.k==="reply"?(x.col==="notes"?`<div class="ar-note muted">Note: “${esc((S.notes[x.rid]||{}).text||"")}”</div>`:(()=>{const l=S.lessons[x.rid]||{};return [l.homework?`<div class="ar-note muted"><b>Homework:</b> ${esc(l.homework)}</div>`:"",l.lessonNote?`<div class="ar-note muted"><b>Note:</b> ${esc(l.lessonNote)}</div>`:""].join("")})())+noteSocial(x.col,S[x.col][x.rid]):""}
+    ${x.k==="snote"?noteSocial("notes",S.notes[x.id]):x.k==="note"?noteSocial("lessons",x.l):x.k==="reply"?(x.col==="notes"?`<div class="ar-note muted">Note: “${esc((S.notes[x.rid]||{}).text||"")}”</div>`:(()=>{const l=S.lessons[x.rid]||{};return [l.homework?`<div class="ar-note muted"><b>Homework:</b> <span data-noi18n>${esc(l.homework)}</span></div>`:"",l.lessonNote?`<div class="ar-note muted"><b>Note:</b> <span data-noi18n>${esc(l.lessonNote)}</span></div>`:""].join("")})())+noteSocial(x.col,S[x.col][x.rid]):""}
     ${canWrite?`<div class="tools">${x.k==="snote"||(x.k==="reply"&&x.col==="notes")?`<button type="button" class="btn sm ghost danger-t" data-ndel="${esc(x.rid||x.id)}">Delete note</button>`:x.k==="note"?`<button type="button" class="btn sm ghost danger-t" data-lndel="${esc(x.id)}">Delete note</button>`:""}${x.l?`<button type="button" class="btn sm ghost" data-act="${esc(x.l.id)}|open">Open lesson</button>`:""}<button type="button" class="btn sm" data-seen="${esc(x.k)}|${esc(x.id)}">Seen ✓</button></div>`:""}</article>`).join("")}</div>`:`<div class="panel empty">Nothing new.</div>`}
   ${histSection()}`;
 }
@@ -3392,7 +3786,7 @@ function pushCardHtml(){const P=window.WA_PUSH;if(!P)return "";const sup=P.suppo
   return `<section class="tv-push"><b>🔔 Turn on notifications</b><p>Get a message on your phone when your schedule changes or there's a new lesson offer. The app icon also shows how many new things are waiting.</p><div class="tv-push-b"><button type="button" class="tv-btn done" data-pushon>Turn on</button><button type="button" class="tv-btn ghost" data-pushx>Later</button></div></section>`}
 function offerCardsFor(tid){const td=today();
   return arr("offers").filter(o=>Array.isArray(o.teachers)&&o.teachers.includes(tid)&&o.date>=td&&!(o.declined||{})[tid]&&!(o.status!=="open"&&o.takenBy!==tid&&(o.hidden||{})[tid])).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)).map(o=>{
-    if(o.status==="open")return `<article class="of-card open"><div class="of-h">New lesson offer</div><div class="of-w"><b>${esc(offerWhat(o))}</b> · ${esc(offerWho(o))}</div>${o.note?`<div class="muted" style="font-size:13px">${esc(o.note)}</div>`:""}
+    if(o.status==="open")return `<article class="of-card open"><div class="of-h">New lesson offer</div><div class="of-w"><b>${esc(offerWhat(o))}</b> · ${esc(offerWho(o))}</div>${o.note?`<div class="muted" style="font-size:13px"><span data-noi18n>${esc(o.note)}</span></div>`:""}
       <div class="tv-acts"><button type="button" class="tv-btn done" data-ofacc="${esc(o.id)}">I'll take it</button><button type="button" class="tv-btn" data-ofdec="${esc(o.id)}">Can't</button></div></article>`;
     if(o.status==="taken"&&o.takenBy===tid)return `<article class="of-card mine"><div class="of-h">✓ You took this lesson</div><div class="of-w">${esc(offerWhat(o))} · ${esc(offerWho(o))}</div></article>`;
     return `<article class="of-card gone"><div class="of-h">${o.status==="taken"?"Already taken · please disregard":"Cancelled · please disregard"}</div><div class="of-w">${esc(offerWhat(o))} · ${esc(offerWho(o))}</div><button type="button" class="linkbtn" data-ofhide="${esc(o.id)}">Hide</button></article>`}).join("")}
@@ -3428,12 +3822,12 @@ function editAnnounce(){
       return save("announcements",null,{title:x.title,text:x.text||"",at:new Date().toISOString(),aud:x.aud,label:r.label,tids:r.tids,sids:r.sids,tSeen:{},sSeen:{}})}});
   setTimeout(()=>{const m=document.querySelector(".modal");if(m)upd(m)},0)}
 function annFor(kind,id){return arr("announcements").filter(a=>(kind==="t"?(a.tids||[]):(a.sids||[])).includes(id)).sort((a,b)=>(b.at||"").localeCompare(a.at||""))}
-function annCard(a,seenAttr){return `<article class="ann-card"><div class="ann-h"><span class="ann-ic">📢</span><b>${esc(a.title)}</b><span class="muted">${esc(dLabel((a.at||"").slice(0,10)))}</span>${seenAttr?`<button type="button" class="tv-nbtn" ${seenAttr}>OK, seen</button>`:""}</div>${a.text?`<div class="ann-t">${esc(a.text)}</div>`:""}</article>`}
+function annCard(a,seenAttr){return `<article class="ann-card"><div class="ann-h"><span class="ann-ic">📢</span><b><span data-noi18n>${esc(a.title)}</span></b><span class="muted">${esc(dLabel((a.at||"").slice(0,10)))}</span>${seenAttr?`<button type="button" class="tv-nbtn" ${seenAttr}>OK, seen</button>`:""}</div>${a.text?`<div class="ann-t"><span data-noi18n>${esc(a.text)}</span></div>`:""}</article>`}
 function vAnnounce(){const A=arr("announcements").sort((a,b)=>(b.at||"").localeCompare(a.at||""));
   return `<div class="head"><div><h1>Announcements</h1><p class="sub">Send a message to all teachers, chosen teachers, all students and parents, chosen students, or by language, age or school. It appears at the top of their page until they tap <b>OK, seen</b>.</p></div><div class="tools">${canWrite?`<button class="btn pri" type="button" data-annnew>+ New announcement</button>`:""}</div></div>
   ${A.length?A.map(a=>{const ts=a.tids||[],ss=a.sids||[],tn=ts.filter(id=>(a.tSeen||{})[id]).length,sn=ss.filter(id=>(a.sSeen||{})[id]).length,notT=ts.filter(id=>!(a.tSeen||{})[id]),notS=ss.filter(id=>!(a.sSeen||{})[id]);
-    return `<article class="panel ann-row"><div class="ann-h"><b>${esc(a.title)}</b><span class="muted">${esc(dLabel((a.at||"").slice(0,10)))} ${esc((a.at||"").slice(11,16))}</span>${canWrite?`<button type="button" class="btn sm ghost" data-anndel="${esc(a.id)}">Delete</button>`:""}</div>
-    ${a.text?`<div class="ann-t">${esc(a.text)}</div>`:""}<div class="muted" style="font-size:13px;margin-top:6px">To: ${esc(a.label||"")}</div>
+    return `<article class="panel ann-row"><div class="ann-h"><b><span data-noi18n>${esc(a.title)}</span></b><span class="muted">${esc(dLabel((a.at||"").slice(0,10)))} ${esc((a.at||"").slice(11,16))}</span>${canWrite?`<button type="button" class="btn sm ghost" data-anndel="${esc(a.id)}">Delete</button>`:""}</div>
+    ${a.text?`<div class="ann-t"><span data-noi18n>${esc(a.text)}</span></div>`:""}<div class="muted" style="font-size:13px;margin-top:6px">To: ${esc(a.label||"")}</div>
     <div class="tags" style="margin-top:6px">${ts.length?`<span class="chip${tn===ts.length?" good":""}">Teachers seen ${tn}/${ts.length}</span>`:""}${ss.length?`<span class="chip${sn===ss.length?" good":""}">Students/parents seen ${sn}/${ss.length}</span>`:""}</div>
     ${notT.length||notS.length?`<details style="margin-top:6px"><summary class="muted" style="font-size:13px;cursor:pointer">Not seen yet</summary><p style="font-size:13px;margin:4px 0 0">${[...notT.map(id=>nm("teachers",id)),...notS.map(id=>nm("students",id))].map(esc).join(", ")}</p></details>`:""}</article>`}).join(""):`<div class="panel empty">No announcements yet.</div>`}`}
 function vOffers(){
@@ -3800,15 +4194,15 @@ function vStudentView(pv){
     <div class="sv-when">${esc(dLabel(next.date))}${next.date===td?" · today":next.date===addDays(td,1)?" · tomorrow":""}</div>
     <div class="sv-time">${esc(next.time||"Time to be confirmed")}${endTime(next)?"–"+endTime(next):""}</div>
     <div class="sv-row"><span>${esc(nm("teachers",next.teacherId))}</span>${r?roomTag(r):""}<span class="muted">${esc(next.duration||"")} min</span></div></section>`})():`<section class="sv-next"><span class="sv-lbl">Next lesson</span><div class="sv-when">No lesson booked yet</div><p class="muted" style="margin:4px 0 0">The school will add your next lesson.</p></section>`;
-  return `<div class="tv-wrap">${banner}<div class="tv-head"><h1>${pv?"Hello! Here's "+esc(s.name)+"'s week":"Hi, "+esc(s.name)}</h1></div>${pv&&pv.f.kids.length>1?`<div class="modes pv-kids" role="group" aria-label="Child">${pv.f.kids.map(k=>`<button type="button" data-pvkid="${esc(k.id)}" aria-pressed="${k.id===s.id}">${esc(k.name)}</button>`).join("")}</div>`:""}
+  return `<div class="tv-wrap">${banner}<div class="tv-head"><h1>${pv?"Hello! Here's "+esc(s.name)+"'s week":"Hi, "+esc(s.name)}</h1>${langSw()}</div>${pv&&pv.f.kids.length>1?`<div class="modes pv-kids" role="group" aria-label="Child">${pv.f.kids.map(k=>`<button type="button" data-pvkid="${esc(k.id)}" aria-pressed="${k.id===s.id}">${esc(k.name)}</button>`).join("")}</div>`:""}
   ${(()=>{const ids=pv?pv.f.kids.map(k=>k.id):[s.id];const seen=new Set();const L2=[];ids.forEach(id=>annFor("s",id).forEach(a=>{if(seen.has(a.id))return;seen.add(a.id);const un=ids.filter(k=>(a.sids||[]).includes(k)&&!(a.sSeen||{})[k]);if(un.length)L2.push([a,un])}));
     return L2.length?`<section class="tv-ann">${L2.map(([a,un])=>annCard(a,`data-annseen="${esc(a.id)}|s|${esc(un.join(","))}"`)).join("")}</section>`:""})()}
   ${nextCard}
   ${(()=>{const M=arr("materials").filter(m=>matForStudent(m,s.id)).sort((a,b)=>(a.title||"").localeCompare(b.title||""));return M.length?`<section class="sv-box"><h2>Materials</h2>${M.map(matMiniHtml).join("")}</section>`:""})()}
-  <section class="sv-box"><h2>Homework</h2>${hwList.length?`<div class="sv-hwl">${(svHwAll?hwList:hwList.slice(0,5)).map((h,i)=>{const nf=Array.isArray(h.hwFiles)?h.hwFiles.length:0;return `<button type="button" class="sv-hwb" data-svhw="${esc(h.id)}"><span class="sv-hwd">${esc(dLabel(h.date))}${i===0?` <span class="chip acc">Latest</span>`:""}</span><span class="sv-hwm">${esc(teacherOf(h))}${nf?` · ${nf} ${nf===1?"file":"files"}`:""}${h.homework?` · ${esc(h.homework.slice(0,40))}${h.homework.length>40?"…":""}`:""}</span><span class="sv-hwc" aria-hidden="true">›</span></button>`}).join("")}</div>${hwList.length>5?`<button type="button" class="btn sm ghost" data-svhwall style="margin-top:6px">${svHwAll?"Show fewer":`Show older (${hwList.length-5})`}</button>`:""}`:`<p class="muted" style="margin:0">No homework right now.</p>`}</section>
+  <section class="sv-box"><h2>Homework</h2>${hwList.length?`<div class="sv-hwl">${(svHwAll?hwList:hwList.slice(0,5)).map((h,i)=>{const nf=Array.isArray(h.hwFiles)?h.hwFiles.length:0;return `<button type="button" class="sv-hwb" data-svhw="${esc(h.id)}"><span class="sv-hwd">${esc(dLabel(h.date))}${i===0?` <span class="chip acc">Latest</span>`:""}</span><span class="sv-hwm">${esc(teacherOf(h))}${nf?` · ${nf} ${nf===1?"file":"files"}`:""}${h.homework?` · <span data-noi18n>${esc(h.homework.slice(0,40))}</span>${h.homework.length>40?"…":""}`:""}</span><span class="sv-hwc" aria-hidden="true">›</span></button>`}).join("")}</div>${hwList.length>5?`<button type="button" class="btn sm ghost" data-svhwall style="margin-top:6px">${svHwAll?"Show fewer":`Show older (${hwList.length-5})`}</button>`:""}`:`<p class="muted" style="margin:0">No homework right now.</p>`}</section>
   <section class="sv-box"><h2>Coming up</h2>${upcoming.length?`<div class="sv-list">${upcoming.slice(0,8).map(l=>{const r=roomOf(l);return `<div class="sv-li"><span class="sv-d">${esc(dLabel(l.date))}</span><span class="mono">${esc(l.time||"—")}</span><span>${esc(nm("teachers",l.teacherId))}</span>${r?roomTag(r):`<span></span>`}</div>`}).join("")}</div>`:`<p class="muted" style="margin:0">Nothing booked yet.</p>`}</section>
-  <section class="sv-box"><h2>This month's lessons</h2>${past.length?`<div class="sv-list">${past.map(l=>`<div class="sv-li"><span class="sv-d">${esc(dLabel(l.date))}</span><span class="mono">${esc(l.time||"")}</span><span>${esc(teacherOf(l))}</span>${s.groupId&&l.studentId===s.groupId&&(l.attendance||{})[s.id]?`<span class="st ${(l.attendance||{})[s.id]==="here"?"done":"absent"}" style="cursor:default">${(l.attendance||{})[s.id]==="here"?"Attended":"Absent"}</span>`:`<span class="st ${esc(l.status)}" style="cursor:default">${esc(SV_STATUS[l.status]||stLabel(l.status))}</span>`}</div>${l.topic||l.attitude||l.hwGrade?`<div class="sv-sub">${l.topic?"Covered: "+esc(l.topic)+" ":""}${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</div>`:""}`).join("")}</div>`:`<p class="muted" style="margin:0">Coming soon</p>`}</section>
-  ${Array.isArray(s.books)&&s.books.length?`<section class="sv-box"><h2>Books</h2><div class="sv-list">${s.books.map(b=>`<div class="sv-li" style="grid-template-columns:minmax(0,1fr) auto auto"><span class="sv-d">${esc(b.title)} ${bkTag(b)}</span>${showPay?`<span class="mono">${b.price!=null&&b.price!==""?money(b.price):""}</span><span class="rtag" style="background:var(${b.paid?"--pay-yes":"--pay-no"});border-color:transparent">${b.paid?"Paid":"Not paid yet"}</span>`:"<span></span><span></span>"}</div>`).join("")}</div></section>`:""}
+  <section class="sv-box"><h2>This month's lessons</h2>${past.length?`<div class="sv-list">${past.map(l=>`<div class="sv-li"><span class="sv-d">${esc(dLabel(l.date))}</span><span class="mono">${esc(l.time||"")}</span><span>${esc(teacherOf(l))}</span>${s.groupId&&l.studentId===s.groupId&&(l.attendance||{})[s.id]?`<span class="st ${(l.attendance||{})[s.id]==="here"?"done":"absent"}" style="cursor:default">${(l.attendance||{})[s.id]==="here"?"Attended":"Absent"}</span>`:`<span class="st ${esc(l.status)}" style="cursor:default">${esc(SV_STATUS[l.status]||stLabel(l.status))}</span>`}</div>${l.topic||l.attitude||l.hwGrade?`<div class="sv-sub">${l.topic?"Covered: <span data-noi18n>"+esc(l.topic)+"</span> ":""}${rateChip("att",l.attitude)}${rateChip("hw",l.hwGrade)}</div>`:""}`).join("")}</div>`:`<p class="muted" style="margin:0">Coming soon</p>`}</section>
+  ${Array.isArray(s.books)&&s.books.length?`<section class="sv-box"><h2>Books</h2><div class="sv-list">${s.books.map(b=>`<div class="sv-li" style="grid-template-columns:minmax(0,1fr) auto auto"><span class="sv-d"><span data-noi18n>${esc(b.title)}</span> ${bkTag(b)}</span>${showPay?`<span class="mono">${b.price!=null&&b.price!==""?money(b.price):""}</span><span class="rtag" style="background:var(${b.paid?"--pay-yes":"--pay-no"});border-color:transparent">${b.paid?"Paid":"Not paid yet"}</span>`:"<span></span><span></span>"}</div>`).join("")}</div></section>`:""}
   ${showPay?`  <section class="sv-box"><h2>Fees · ${esc(monthLabel(cm))}</h2>${s.groupId?(()=>{const v=(s.groupPaid||{})[cm];return `<div class="sv-fees"><div class="sv-fee" style="background:var(${v==="paid"?"--pay-yes":"--pay-no"})"><span>${esc(nm("students",s.groupId))}</span><b>${esc(monthLabel(cm).split(" ")[0])}</b><em>${v==="paid"?"Paid":v==="half"?"Half paid":"Not paid yet"}</em></div>${s.groupPrepaid?`<div class="sv-fee" style="background:var(--pay-yes)"><span>Paid ahead</span><b>${money(s.groupPrepaid)}</b><em>${esc(groupMonths([s]).filter(m=>(s.groupPaid||{})[m]==="paid"&&m>cm).map(m=>monthLabel(m).split(" ")[0]).join(", ")||"")}</em></div>`:""}</div>${(()=>{const i=gMonthInfo(s,cm);return `<p class="fee-why">${esc(i.text)}${i.covered?" · paid with the bundle in "+esc(monthLabel(i.start).split(" ")[0]):""}</p>`})()}`})():bill?`<div class="sv-fees"><div class="sv-fee" style="background:var(${bill.paid?"--pay-yes":"--pay-no"})"><span>Lessons</span><b>${money(bill.amount)}</b><em>${bill.paid?"Paid":"Not paid yet"}</em></div>${bill.books!=null&&bill.books!==""?`<div class="sv-fee" style="background:var(${bill.booksPaid?"--pay-yes":"--pay-no"})"><span>Books</span><b>${money(bill.books)}</b><em>${bill.booksPaid?"Paid":"Not paid yet"}</em></div>`:""}</div>${feeExplainHtml(s,bill)}`:`<p class="muted" style="margin:0">No fee for this month yet.</p>`}${(()=>{const p=s.groupId?payInfoGroup(s,cm):bill?payInfoBill(bill):null;return p?payBlock(p):""})()}</section>`:""}
   </div>`;
 }
@@ -4237,13 +4631,13 @@ function render(){
   main.querySelectorAll("details[data-sec]").forEach(d=>{if(d.open)openSecs.add(d.dataset.sec);else openSecs.delete(d.dataset.sec)});
   const scr=[...main.querySelectorAll("[class*='wrap'],.sp-list")].filter(e=>e.scrollTop||e.scrollLeft).map(e=>{const cls=[...e.classList].sort().join(".");return [cls,[...main.querySelectorAll("[class*='wrap'],.sp-list")].filter(x=>[...x.classList].sort().join(".")===cls).indexOf(e),e.scrollTop,e.scrollLeft]}), wy=window.scrollY, wx=window.scrollX, my=main.scrollTop;
   main.innerHTML=banner+ro+fn();renderUR();
-  wire(main);
+  wire(main);i18nSync();
   const restoreScr=()=>{scr.forEach(([cls,i,t,l])=>{const e=[...main.querySelectorAll("[class*='wrap'],.sp-list")].filter(x=>[...x.classList].sort().join(".")===cls)[i];if(e){e.scrollTop=t;e.scrollLeft=l}});if(main.scrollTop!==my)main.scrollTop=my;if(window.scrollY!==wy||window.scrollX!==wx)window.scrollTo(wx,wy)};restoreScr();
   main.querySelectorAll("details[data-sec]").forEach(d=>{if(openSecs.has(d.dataset.sec))d.open=true});
   if(focusId){const el=document.getElementById(focusId);if(el){if(typing!=null&&el.value!==typing)el.value=typing;el.focus();try{el.setSelectionRange(selStart,selStart)}catch(e){}}}
   restoreScr();
 }
-function wire(main){
+function wire(main){main.querySelectorAll("[data-setlang]").forEach(b=>b.onclick=()=>setLang(b.dataset.setlang));
   wireRows(main);
   main.querySelectorAll("[data-mcshow]").forEach(b=>b.onclick=()=>{mcShowDis=!mcShowDis;render()});
   main.querySelectorAll("[data-mcdis]").forEach(b=>b.onclick=async e=>{e.stopPropagation();const [id,k]=b.dataset.mcdis.split("|"),sig=b.dataset.sig;const l=S.lessons[id];if(!l)return;const d=Object.assign({},l.mcDis||{});if(sig)d[k]=sig;else delete d[k];

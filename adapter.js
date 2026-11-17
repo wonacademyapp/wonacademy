@@ -23,36 +23,53 @@
   #wa-who button{border:0;background:none;color:#2f5bd3;font:inherit;cursor:pointer;padding:0 0 0 6px}`;
   function addCss() { const s = document.createElement("style"); s.textContent = css; document.head.appendChild(s); }
 
+  /* sign-in screen in English, Korean or Czech (remembers the choice made in the app) */
+  const TX = {
+    en: { intro: "Sign in with your email. We'll email you a sign-in code (and a link).", send: "Send me a sign-in code", typeCode: "Type the code from the email here:", signIn: "Sign in",
+      bad: "Please check your email address — it looks incomplete (for example, …@gmail.com).", sending: "Sending…", noSend: "Couldn't send the email: ", sent: (n) => "✓ Email sent from " + n + " (check spam too).", again: "Send a new code",
+      whole: "Please type the whole code.", checking: "Checking…", wrong: "That code didn't work. Check it, or send a new code. ", email: "Email", code: "Sign-in code" },
+    ko: { intro: "이메일로 로그인하세요. 로그인 코드(와 링크)를 이메일로 보내 드려요.", send: "로그인 코드 받기", typeCode: "이메일로 받은 코드를 여기에 입력하세요:", signIn: "로그인",
+      bad: "이메일 주소를 확인해 주세요 — 완전하지 않은 것 같아요 (예: …@gmail.com).", sending: "보내는 중…", noSend: "이메일을 보내지 못했어요: ", sent: (n) => "✓ " + n + "에서 이메일을 보냈어요 (스팸함도 확인하세요).", again: "새 코드 받기",
+      whole: "코드를 모두 입력해 주세요.", checking: "확인 중…", wrong: "코드가 맞지 않아요. 다시 확인하거나 새 코드를 받으세요. ", email: "이메일", code: "로그인 코드" },
+    cs: { intro: "Přihlaste se e-mailem. Pošleme vám přihlašovací kód (a odkaz).", send: "Poslat přihlašovací kód", typeCode: "Sem napište kód z e-mailu:", signIn: "Přihlásit se",
+      bad: "Zkontrolujte prosím e-mailovou adresu — zdá se neúplná (například …@gmail.com).", sending: "Odesílám…", noSend: "E-mail se nepodařilo odeslat: ", sent: (n) => "✓ E-mail od " + n + " odeslán (zkontrolujte i spam).", again: "Poslat nový kód",
+      whole: "Napište prosím celý kód.", checking: "Ověřuji…", wrong: "Kód nefunguje. Zkontrolujte ho, nebo si pošlete nový. ", email: "E-mail", code: "Přihlašovací kód" },
+  };
+  const LNG = (() => { try { const v = localStorage.getItem("wa_lang"); if (v && TX[v]) return v; } catch (e) {} const n = (navigator.language || "").slice(0, 2).toLowerCase(); return TX[n] ? n : "en"; })();
+  const LT = TX[LNG];
   function showLogin(message) {
     addCss();
     const d = document.createElement("div"); d.id = "wa-login";
-    d.innerHTML = `<form class="box"><h1>${(CFG.SCHOOL_NAME || "Won Academy")}</h1>
-      <p>Sign in with your email. We'll email you a sign-in code (and a link).</p>
-      <input type="email" required placeholder="you@example.com" autocomplete="email" aria-label="Email">
-      <button type="submit">Send me a sign-in code</button><div class="msg" role="status">${message || ""}</div>
-      <div class="code" hidden><p style="margin-top:16px">Type the code from the email here:</p>
-      <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" aria-label="Sign-in code" maxlength="10">
-      <button type="button" class="vbtn">Sign in</button><div class="msg vmsg" role="status"></div></div></form>`;
+    const name = CFG.SCHOOL_NAME || "Won Academy";
+    d.innerHTML = `<form class="box"><h1>${name}</h1>
+      <p>${LT.intro}</p>
+      <input type="email" required placeholder="you@example.com" autocomplete="email" aria-label="${LT.email}">
+      <button type="submit">${LT.send}</button><div class="msg" role="status">${message || ""}</div>
+      <div class="code" hidden><p style="margin-top:16px">${LT.typeCode}</p>
+      <input type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" aria-label="${LT.code}" maxlength="10">
+      <button type="button" class="vbtn">${LT.signIn}</button><div class="msg vmsg" role="status"></div></div>
+      <p class="langs" style="margin:18px 0 0;font-size:13px;color:#5b6270">${[["en", "English"], ["ko", "한국어"], ["cs", "Čeština"]].map(([k, l]) => k === LNG ? `<b>${l}</b>` : `<a href="#" data-l="${k}" style="color:#2f5bd3">${l}</a>`).join(" · ")}</p></form>`;
     const go = () => document.body.appendChild(d);
     if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
+    d.querySelectorAll("[data-l]").forEach((a) => a.onclick = (e) => { e.preventDefault(); try { localStorage.setItem("wa_lang", a.dataset.l); } catch (x) {} location.reload(); });
     const f = d.querySelector("form"), msg = d.querySelector(".msg"), btn = d.querySelector("button[type=submit]");
     const codeBox = d.querySelector(".code"), codeIn = codeBox.querySelector("input"), vbtn = d.querySelector(".vbtn"), vmsg = d.querySelector(".vmsg");
     let sentTo = "";
     f.onsubmit = async (e) => {
       e.preventDefault(); const email = f.querySelector("input[type=email]").value.trim().toLowerCase(); if (!email) return;
-      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) { msg.className = "msg err"; msg.textContent = "Please check your email address — it looks incomplete (for example, …@gmail.com)."; return; }
-      btn.disabled = true; msg.className = "msg"; msg.textContent = "Sending…";
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) { msg.className = "msg err"; msg.textContent = LT.bad; return; }
+      btn.disabled = true; msg.className = "msg"; msg.textContent = LT.sending;
       const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
       btn.disabled = false;
-      if (error) { msg.className = "msg err"; msg.textContent = "Couldn't send the email: " + error.message; }
-      else { sentTo = email; msg.className = "msg ok"; msg.textContent = "✓ Email sent from " + (CFG.SCHOOL_NAME || "Won Academy") + " (check spam too)."; codeBox.hidden = false; btn.textContent = "Send a new code"; codeIn.focus(); }
+      if (error) { msg.className = "msg err"; msg.textContent = LT.noSend + error.message; }
+      else { sentTo = email; msg.className = "msg ok"; msg.textContent = LT.sent(name); codeBox.hidden = false; btn.textContent = LT.again; codeIn.focus(); }
     };
     const verify = async () => {
-      const token = codeIn.value.replace(/\D/g, ""); if (!sentTo || token.length < 6) { vmsg.className = "msg vmsg err"; vmsg.textContent = "Please type the whole code."; return; }
-      vbtn.disabled = true; vmsg.className = "msg vmsg"; vmsg.textContent = "Checking…";
+      const token = codeIn.value.replace(/\D/g, ""); if (!sentTo || token.length < 6) { vmsg.className = "msg vmsg err"; vmsg.textContent = LT.whole; return; }
+      vbtn.disabled = true; vmsg.className = "msg vmsg"; vmsg.textContent = LT.checking;
       const { error } = await sb.auth.verifyOtp({ email: sentTo, token, type: "email" });
       vbtn.disabled = false;
-      if (error) { vmsg.className = "msg vmsg err"; vmsg.textContent = "That code didn't work. Check it, or send a new code. (" + error.message + ")"; }
+      if (error) { vmsg.className = "msg vmsg err"; vmsg.textContent = LT.wrong + "(" + error.message + ")"; }
     };
     vbtn.onclick = verify;
     codeIn.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); verify(); } });
